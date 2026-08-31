@@ -9,7 +9,6 @@ if (!connectionString) {
 
 export const pool = new Pool({
   connectionString,
-  ssl: { rejectUnauthorized: false },
   max: 5,
   idleTimeoutMillis: 30_000,
 });

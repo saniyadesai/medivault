@@ -13,11 +13,13 @@ function getToken() {
 async function dashboardRequest(path) {
   const token = getToken();
   if (!API_BASE_URL || !token) {
-    return null; // fallback to empty state
+    return null;
   }
+
   const res = await fetch(`${API_BASE_URL}${path}`, {
     headers: { Authorization: `Bearer ${token}` },
   });
+
   if (!res.ok) return null;
   return res.json();
 }

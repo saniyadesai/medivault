@@ -59,11 +59,10 @@ app.get('/health', async (_req, res) => {
     await pool.query('SELECT 1');
     res.json({ ok: true });
   } catch (err) {
-    console.error('Health check failed:', err.message);
-    res.status(500).json({ ok: false, message: 'Database unavailable' });
+    console.error('Health check error:', err.message);
+    res.status(500).json({ ok: false });
   }
 });
-
 // ════════════════════════════════════════
 //  Registration helpers
 // ════════════════════════════════════════

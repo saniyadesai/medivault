@@ -11,7 +11,7 @@ function getToken() {
 
 export async function uploadDocument({ file, documentType, description, visitDate, patientId }) {
   const token = getToken();
-  if (!API_BASE_URL || !token) throw new Error('Not authenticated.');
+ if (!token) throw new Error('Not authenticated.');
 
   const form = new FormData();
   form.append('file', file);

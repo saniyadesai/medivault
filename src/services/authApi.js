@@ -134,8 +134,7 @@ export async function loginUser({ role, email, password }) {
         }, 450);
       });
     }
-
-    return request('/auth/login', {
+   return request('/auth/login', {
       method: 'POST',
       body: JSON.stringify({ role, email, password }),
     });
