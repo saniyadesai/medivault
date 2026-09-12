@@ -1,6 +1,6 @@
 import 'dotenv/config';          // load .env BEFORE anything else
 import { testConnection } from './db.js';
-import { ensureBucket } from './appwrite.js';
+import { ensureBucket, isStorageConfigured } from './storage.js';
 import app from './app.js';
 
 const port = Number(process.env.API_PORT || 3001);
@@ -15,15 +15,15 @@ async function start() {
   }
   console.log('✅  Database connection verified');
 
-  // Ensure Appwrite storage bucket exists
-  if (process.env.APPWRITE_API_KEY) {
+  // Ensure the S3/MinIO bucket exists
+  if (isStorageConfigured()) {
     try {
       await ensureBucket();
     } catch (err) {
-      console.warn('⚠️  Appwrite bucket setup failed:', err.message);
+      console.warn('⚠️  Storage bucket setup failed (is MinIO running? `docker compose up -d`):', err.message);
     }
   } else {
-    console.warn('⚠️  APPWRITE_API_KEY not set — file uploads will fail. Add it to .env');
+    console.warn('⚠️  S3_ACCESS_KEY / S3_SECRET_KEY not set — file uploads will fail. Add them to .env');
   }
 
   app.listen(port, host, () => {

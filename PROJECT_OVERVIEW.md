@@ -38,12 +38,12 @@ Healthcare records are typically fragmented across hospitals and providers, whic
 ### Data and Storage
 - PostgreSQL via `pg`
 - Drizzle schema/migrations in `db/`
-- Appwrite Storage via `node-appwrite` for document file storage
+- S3-compatible object storage via `@aws-sdk/client-s3` (`server/src/storage.js`); MinIO in Docker locally
 
 ### AI
-- OpenRouter Chat Completions endpoint (`https://openrouter.ai/api/v1/chat/completions`)
-- Model used in code: `openai/gpt-4o`
-- API key loaded from `GEMINI_API_KEY`
+- Any OpenAI-compatible chat completions endpoint (`AI_BASE_URL`), default local Ollama at `http://localhost:11434/v1`
+- Model from `AI_MODEL` (default local: `qwen2.5vl:7b`; OpenRouter: `openai/gpt-4o`)
+- Optional bearer key from `AI_API_KEY` (legacy `GEMINI_API_KEY` still implies OpenRouter)
 
 ### Tooling
 - ESLint 9
@@ -70,7 +70,7 @@ Healthcare records are typically fragmented across hospitals and providers, whic
 - Node.js (LTS recommended)
 - npm
 - PostgreSQL database
-- Appwrite project/bucket (for document uploads)
+- Docker (MinIO for document uploads) and optionally Ollama (AI summaries)
 
 ### Step-by-step
 1. Install dependencies:
@@ -86,11 +86,9 @@ Healthcare records are typically fragmented across hospitals and providers, whic
    - `API_PORT=3001` (optional)
    - `API_HOST=0.0.0.0` (optional)
    - `ALLOWED_ORIGINS=http://localhost:5173` (optional)
-   - `APPWRITE_API_KEY=...` (required for uploads)
-   - `VITE_APPWRITE_ENDPOINT=...`
-   - `VITE_APPWRITE_PROJECT_ID=...`
-   - `APPWRITE_BUCKET_ID=medivault-documents` (optional)
-   - `GEMINI_API_KEY=...` (required for AI summary endpoint)
+   - `S3_ENDPOINT`, `S3_ACCESS_KEY`, `S3_SECRET_KEY` (required for uploads; `docker compose up -d` starts MinIO)
+   - `S3_BUCKET=medivault-documents` (optional)
+   - `AI_BASE_URL`, `AI_MODEL` (required for the AI summary endpoint), `AI_API_KEY` (only for hosted providers)
 
 4. Prepare database schema:
    - Use SQL migrations in `db/migrations/`

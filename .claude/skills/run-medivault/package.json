@@ -1,0 +1,9 @@
+{
+  "name": "run-medivault-driver",
+  "private": true,
+  "type": "module",
+  "description": "Playwright smoke driver for MediVault (agent tooling, not product code)",
+  "dependencies": {
+    "playwright": "^1.63.0"
+  }
+}

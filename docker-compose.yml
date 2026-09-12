@@ -1,0 +1,23 @@
+# Local infrastructure for MediVault. Start with:  docker compose up -d
+# Credentials are read from .env (S3_ACCESS_KEY / S3_SECRET_KEY); the API uses the same values.
+services:
+  minio:
+    image: quay.io/minio/minio:RELEASE.2025-04-22T22-12-26Z
+    command: server /data --console-address ":9001"
+    ports:
+      - "9000:9000"   # S3 API  -> S3_ENDPOINT=http://localhost:9000
+      - "9001:9001"   # Web console (login with the same credentials)
+    environment:
+      MINIO_ROOT_USER: ${S3_ACCESS_KEY:-medivault}
+      MINIO_ROOT_PASSWORD: ${S3_SECRET_KEY:-medivault-secret}
+    volumes:
+      - minio-data:/data
+    healthcheck:
+      test: ["CMD", "mc", "ready", "local"]
+      interval: 5s
+      timeout: 5s
+      retries: 20
+    restart: unless-stopped
+
+volumes:
+  minio-data:

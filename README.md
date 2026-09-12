@@ -7,8 +7,8 @@
 [![React](https://img.shields.io/badge/React_19-20232A?style=for-the-badge&logo=react&logoColor=61DAFB)](https://react.dev/)
 [![Node.js](https://img.shields.io/badge/Node.js-339933?style=for-the-badge&logo=nodedotjs&logoColor=white)](https://nodejs.org/)
 [![PostgreSQL](https://img.shields.io/badge/PostgreSQL-316192?style=for-the-badge&logo=postgresql&logoColor=white)](https://www.postgresql.org/)
-[![Appwrite](https://img.shields.io/badge/Appwrite-FD366E?style=for-the-badge&logo=appwrite&logoColor=white)](https://appwrite.io/)
-[![OpenAI](https://img.shields.io/badge/GPT--4o-412991?style=for-the-badge&logo=openai&logoColor=white)](https://openrouter.ai/)
+[![MinIO](https://img.shields.io/badge/MinIO_(S3)-C72E49?style=for-the-badge&logo=minio&logoColor=white)](https://min.io/)
+[![Ollama](https://img.shields.io/badge/Ollama-000000?style=for-the-badge&logo=ollama&logoColor=white)](https://ollama.com/)
 
 🥈 **2nd Place — Udhbhav 2k26** 🏆
 
@@ -60,7 +60,7 @@ MediVault is a **secure, role-based medical records platform** that puts patient
 | 🗄️ **Secure Document Vault** | Encrypted upload/download with strict role-based authorization |
 | 🤝 **Consent & Access Governance** | Request, approve, reject, grant, revoke — full lifecycle control |
 | 🚨 **Emergency Access Workflow** | 24-hour break-glass access with full audit trail |
-| 🤖 **AI Medical Summarization** | GPT-4o powered structured summaries of uploaded medical records |
+| 🤖 **AI Medical Summarization** | Structured summaries of uploaded records from a local vision model (Ollama) or any OpenAI-compatible API |
 
 ---
 
@@ -77,11 +77,11 @@ MediVault is a **secure, role-based medical records platform** that puts patient
 - 🛡️ Rate limiting, CORS controls, bcrypt password hashing
 
 ### Data & Storage
-- 🐘 PostgreSQL + Drizzle ORM
-- ☁️ Appwrite Storage (document files)
+- 🐘 PostgreSQL (`pg`, plain SQL migrations in `db/migrations/`)
+- 🪣 S3-compatible object storage for encrypted document blobs (MinIO in Docker locally)
 
 ### AI
-- 🤖 OpenRouter → GPT-4o (medical document summarization)
+- 🤖 Any OpenAI-compatible chat API. Default: local Ollama `qwen2.5vl:7b` (free). OpenRouter/GPT-4o still works via env vars.
 
 ### Tooling
 - ESLint 9 · Concurrently · dotenv
@@ -94,8 +94,8 @@ MediVault is a **secure, role-based medical records platform** that puts patient
 - Node.js (LTS)
 - npm
 - PostgreSQL database
-- Appwrite project + bucket
-- OpenRouter API key (for AI summaries)
+- Docker Desktop (runs MinIO for file storage)
+- [Ollama](https://ollama.com/) (optional, for free local AI summaries)
 
 ### Installation
 
@@ -126,22 +126,38 @@ API_HOST=0.0.0.0
 ALLOWED_ORIGINS=http://localhost:5173
 NODE_ENV=development
 
-# Appwrite
-APPWRITE_ENDPOINT=https://cloud.appwrite.io/v1
-APPWRITE_PROJECT_ID=your_project_id
-APPWRITE_API_KEY=your_appwrite_key
-APPWRITE_BUCKET_ID=medivault-documents
+# Object storage (MinIO from docker-compose.yml, or any S3-compatible service)
+S3_ENDPOINT=http://localhost:9000
+S3_ACCESS_KEY=medivault
+S3_SECRET_KEY=medivault-secret
+S3_BUCKET=medivault-documents
+S3_REGION=us-east-1
 
-# AI
-GEMINI_API_KEY=your_openrouter_key
+# AI summaries (any OpenAI-compatible chat API; local Ollama by default)
+AI_BASE_URL=http://localhost:11434/v1
+AI_MODEL=qwen2.5vl:7b
+AI_API_KEY=
+AI_TIMEOUT_MS=300000
 ```
+
+### Local Services (Docker + Ollama)
+
+```bash
+# File storage: MinIO on :9000 (console on :9001). Reads S3_ACCESS_KEY / S3_SECRET_KEY from .env
+docker compose up -d
+
+# AI summaries (optional, free): install Ollama, then pull the vision model once (~6 GB)
+ollama pull qwen2.5vl:7b
+```
+
+To use OpenRouter instead of Ollama set `AI_BASE_URL=https://openrouter.ai/api/v1`, `AI_MODEL=openai/gpt-4o`, and `AI_API_KEY` to your key.
 
 ### Database Setup
 
 ```bash
-# Generate and run migrations
-npx drizzle-kit generate
-npx drizzle-kit migrate
+# Create the database and apply the SQL migrations in order (PostgreSQL 14+)
+createdb medivault
+for f in db/migrations/*.sql; do psql -v ON_ERROR_STOP=1 -d medivault -f "$f" || break; done
 ```
 
 ### Run the App
@@ -171,11 +187,8 @@ npm run preview
 4. Add environment variables in Vercel Project Settings → Environment Variables:
   - `DATABASE_URL`
   - `SESSION_SECRET`
-  - `APPWRITE_ENDPOINT`
-  - `APPWRITE_PROJECT_ID`
-  - `APPWRITE_API_KEY`
-  - `APPWRITE_BUCKET_ID`
-  - `GEMINI_API_KEY`
+  - `S3_ENDPOINT`, `S3_ACCESS_KEY`, `S3_SECRET_KEY`, `S3_BUCKET` (a hosted S3-compatible bucket; MinIO is local-only)
+  - `AI_BASE_URL`, `AI_MODEL`, `AI_API_KEY` (a hosted model; local Ollama is not reachable from Vercel)
   - Optional: `ALLOWED_ORIGINS`
 5. Redeploy.
 
@@ -202,7 +215,7 @@ Operational notes:
 └──────┬───────────┬──────────────┬───────────┘
        │           │              │
   ┌────▼────┐ ┌────▼─────┐ ┌─────▼──────┐
-  │PostgreSQL│ │ Appwrite │ │  GPT-4o AI │
+  │PostgreSQL│ │ MinIO/S3 │ │ Ollama  AI │
   │  (Data) │ │(Documents│ │ (Summaries)│
   └─────────┘ └──────────┘ └────────────┘
 ```

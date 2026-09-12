@@ -6,7 +6,7 @@ import bcrypt from 'bcryptjs';
 import rateLimit from 'express-rate-limit';
 import { pool, withTransaction } from './db.js';
 import { issueToken, makeSafeUser, normalizeEmail, requireAuth, camelRow, camelRows } from './utils.js';
-import { uploadToAppwrite, downloadFromAppwrite } from './appwrite.js';
+import { uploadFile, downloadFile } from './storage.js';
 
 const upload = multer({ storage: multer.memoryStorage(), limits: { fileSize: 20 * 1024 * 1024 } });
 const app = express();
@@ -172,7 +172,7 @@ app.post('/auth/register/hospital', registerLimiter, upload.single('proofDocumen
     if (req.file) {
       try {
         const { blob } = encryptFile(req.file.buffer);
-        const appwriteFileId = await uploadToAppwrite(blob, `${crypto.randomUUID()}_${req.file.originalname}`);
+        const appwriteFileId = await uploadFile(blob, `${crypto.randomUUID()}_${req.file.originalname}`);
 
         // Save Appwrite file reference on the hospital profile
         await pool.query(
@@ -180,7 +180,7 @@ app.post('/auth/register/hospital', registerLimiter, upload.single('proofDocumen
            WHERE user_id = (SELECT id FROM users WHERE email = $3)`,
           [appwriteFileId, req.file.originalname, normalizeEmail(req.body.officialEmail || req.body.email)]
         );
-        console.log(`✅  Hospital proof document stored in Appwrite: ${appwriteFileId}`);
+        console.log(`✅  Hospital proof document stored in object storage: ${appwriteFileId}`);
       } catch (proofErr) {
         console.warn('⚠️  Hospital proof document upload failed (registration still succeeded):', proofErr.message);
       }
@@ -555,9 +555,13 @@ app.post('/api/documents/upload', requireAuth, upload.single('file'), async (req
       if (byEmail.rowCount > 0) {
         patientId = byEmail.rows[0].id;
       } else {
-        const byId = await pool.query('SELECT id FROM patients WHERE id = $1', [patientIdInput]);
+        // Only try the UUID lookup for UUID-shaped input; Postgres throws on "invalid input syntax for type uuid" otherwise
+        const UUID_RE = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
+        const byId = UUID_RE.test(patientIdInput.trim())
+          ? await pool.query('SELECT id FROM patients WHERE id = $1', [patientIdInput.trim()])
+          : { rowCount: 0, rows: [] };
         if (byId.rowCount > 0) patientId = byId.rows[0].id;
-        else return res.status(404).json({ message: 'Patient not found.' });
+        else return res.status(404).json({ message: `Patient not found for "${patientIdInput.trim()}". The patient must register first; use the exact email they log in with.` });
       }
       if (role === 'hospital') hospitalId = await getHospitalId(req.userId);
     } else {
@@ -567,7 +571,7 @@ app.post('/api/documents/upload', requireAuth, upload.single('file'), async (req
     const { dekWrapped, dekIv, blob, checksum } = encryptFile(file.buffer);
 
     // Upload encrypted blob to Appwrite Storage
-    const appwriteFileId = await uploadToAppwrite(blob, `${crypto.randomUUID()}_${file.originalname}`);
+    const appwriteFileId = await uploadFile(blob, `${crypto.randomUUID()}_${file.originalname}`);
 
     const result = await withTransaction(async (client) => {
       const { rows } = await client.query(
@@ -636,7 +640,7 @@ app.get('/api/documents/:id/download', requireAuth, async (req, res) => {
       return res.status(410).json({ message: 'Document stored in legacy format. Re-upload required.' });
     }
 
-    const encryptedBuf = await downloadFromAppwrite(doc.appwrite_file_id);
+    const encryptedBuf = await downloadFile(doc.appwrite_file_id);
     const plainBuffer = doc.encrypted ? decryptFile(encryptedBuf, doc.dek_wrapped) : encryptedBuf;
 
     await logAudit({
@@ -1012,12 +1016,17 @@ app.post('/api/emergency-access/initiate', requireAuth, async (req, res) => {
 });
 
 // ════════════════════════════════════════
-//  AI Document Summary (OpenRouter vision-capable model)
+//  AI Document Summary (any OpenAI-compatible chat API: Ollama, OpenRouter, ...)
 // ════════════════════════════════════════
 app.post('/api/ai/summarize/:id', requireAuth, async (req, res) => {
   try {
-    const GEMINI_KEY = process.env.GEMINI_API_KEY;
-    if (!GEMINI_KEY) return res.status(503).json({ message: 'AI service not configured.' });
+    // AI_BASE_URL: OpenAI-compatible base, e.g. http://localhost:11434/v1 (Ollama) or https://openrouter.ai/api/v1
+    // Legacy: GEMINI_API_KEY alone still means OpenRouter + gpt-4o.
+    const AI_API_KEY = process.env.AI_API_KEY || process.env.GEMINI_API_KEY || '';
+    const AI_BASE_URL = (process.env.AI_BASE_URL || (process.env.GEMINI_API_KEY ? 'https://openrouter.ai/api/v1' : '')).replace(/\/$/, '');
+    const AI_MODEL = process.env.AI_MODEL || 'openai/gpt-4o';
+    const AI_TIMEOUT_MS = Number(process.env.AI_TIMEOUT_MS) || 60000;
+    if (!AI_BASE_URL) return res.status(503).json({ message: 'AI service not configured. Set AI_BASE_URL and AI_MODEL in .env.' });
 
     const docId = req.params.id;
     const userId = req.userId;
@@ -1049,7 +1058,7 @@ app.post('/api/ai/summarize/:id', requireAuth, async (req, res) => {
     }
 
     // Fetch & decrypt
-    const encryptedBuf = await downloadFromAppwrite(doc.appwrite_file_id);
+    const encryptedBuf = await downloadFile(doc.appwrite_file_id);
     const plainBuffer = doc.encrypted ? decryptFile(encryptedBuf, doc.dek_wrapped) : encryptedBuf;
     const base64Data = plainBuffer.toString('base64');
     const mimeType = doc.mime_type || 'application/pdf';
@@ -1075,10 +1084,9 @@ RULES:
 - Be empathetic.
 - High priority ⚠️⚠️ for lesions, masses, or fractures.`;
 
-    // Use OpenRouter API (vision-capable model)
-    const openrouterUrl = 'https://openrouter.ai/api/v1/chat/completions';
-    const openrouterBody = {
-      model: 'openai/gpt-4o',
+    const aiUrl = `${AI_BASE_URL}/chat/completions`;
+    const aiBody = {
+      model: AI_MODEL,
       messages: [
         {
           role: 'system',
@@ -1100,24 +1108,24 @@ RULES:
 
     let aiRes;
     try {
-      console.log('Calling OpenRouter API (openai/gpt-4o)...');
+      console.log(`Calling AI model "${AI_MODEL}" at ${AI_BASE_URL} (timeout ${AI_TIMEOUT_MS} ms)...`);
       const controller = new AbortController();
-      const timeoutId = setTimeout(() => controller.abort(), 60000); // 60 second timeout
+      const timeoutId = setTimeout(() => controller.abort(), AI_TIMEOUT_MS);
 
-      aiRes = await fetch(openrouterUrl, {
+      aiRes = await fetch(aiUrl, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
-          'Authorization': `Bearer ${GEMINI_KEY}`,
+          ...(AI_API_KEY ? { Authorization: `Bearer ${AI_API_KEY}` } : {}),
           'HTTP-Referer': 'https://medivault.local',
           'X-Title': 'MediVault',
         },
-        body: JSON.stringify(openrouterBody),
+        body: JSON.stringify(aiBody),
         signal: controller.signal,
       });
 
       clearTimeout(timeoutId);
-      console.log('OpenRouter API response:', aiRes.status);
+      console.log('AI API response:', aiRes.status);
     } catch (fetchErr) {
       console.error('Fetch error details:', {
         code: fetchErr.code,
@@ -1127,7 +1135,7 @@ RULES:
       });
 
       if (fetchErr.name === 'AbortError' || fetchErr.code === 'UND_ERR_CONNECT_TIMEOUT') {
-        console.error('⚠️ TIMEOUT: Cannot reach OpenRouter API servers. Check network/firewall.');
+        console.error('⚠️ TIMEOUT: Cannot reach the AI server. Check network/firewall.');
         return res.status(504).json({
           message: 'AI API timeout. Check your network connection.'
         });
@@ -1137,7 +1145,7 @@ RULES:
 
     if (!aiRes.ok) {
       const errBody = await aiRes.text();
-      console.error('OpenRouter API error details:');
+      console.error('AI API error details:');
       console.error('  Status:', aiRes.status);
       console.error('  Headers:', Object.fromEntries(aiRes.headers.entries()));
       console.error('  Body:', errBody);
@@ -1147,7 +1155,7 @@ RULES:
         const errJson = JSON.parse(errBody);
         errorMsg = errJson.error?.message || errJson.message || errBody;
         console.error('  Parsed error:', errorMsg);
-      } catch (e) {
+      } catch {
         // Fall back to raw body
       }
 
@@ -1163,7 +1171,7 @@ RULES:
 
     await logAudit({
       patientId: doc.patient_id, documentId: docId, actorUserId: userId,
-      action: 'ai_summarize', req, metadata: { model: 'openai/gpt-4o' },
+      action: 'ai_summarize', req, metadata: { model: AI_MODEL, baseUrl: AI_BASE_URL },
     });
 
     res.json({ summary, filename: doc.original_filename });
