@@ -179,23 +179,57 @@ npm run preview
 
 ### Vercel Deployment
 
-1. Push your repo to GitHub.
-2. Import the project in Vercel.
-3. Build settings are auto-read from `vercel.json`:
-  - Build command: `npm run build`
-  - Output directory: `dist`
-4. Add environment variables in Vercel Project Settings → Environment Variables:
-  - `DATABASE_URL`
-  - `SESSION_SECRET`
-  - `S3_ENDPOINT`, `S3_ACCESS_KEY`, `S3_SECRET_KEY`, `S3_BUCKET` (a hosted S3-compatible bucket; MinIO is local-only)
-  - `AI_BASE_URL`, `AI_MODEL`, `AI_API_KEY` (a hosted model; local Ollama is not reachable from Vercel)
-  - Optional: `ALLOWED_ORIGINS`
-5. Redeploy.
+Vercel runs the React build as static files and the Express app as one serverless function (`api/server.js`). Ollama and MinIO are local-only, so production needs hosted equivalents. All of them have free tiers:
+
+| Need | Recommended | Also works |
+|---|---|---|
+| PostgreSQL | [Neon](https://neon.tech) (free tier; also available as the Vercel Postgres integration) | Supabase, Railway, RDS |
+| S3-compatible bucket | [Cloudflare R2](https://developers.cloudflare.com/r2/) (10 GB free, no egress fees) | AWS S3, Backblaze B2, Supabase Storage |
+| Vision-capable model | [Google AI Studio](https://aistudio.google.com) Gemini API, free tier, OpenAI-compatible endpoint | Groq (free tier), OpenRouter (paid) |
+
+**1. Create the services**
+
+- Neon: create a project, copy the connection string (it ends in `?sslmode=require`).
+- R2: create a bucket named `medivault-documents`, then *Manage R2 API Tokens → Create API token* with Object Read & Write on that bucket. Note the Access Key ID, Secret Access Key, and the S3 endpoint `https://<account-id>.r2.cloudflarestorage.com`.
+- Gemini: create an API key in AI Studio.
+
+**2. Apply the migrations to the hosted database** (from your machine, once per new database):
+
+```bash
+DATABASE_URL='postgresql://...neon.tech/neondb?sslmode=require' npm run db:migrate
+```
+
+The runner records applied files in `schema_migrations`, so re-running is safe. If the database was already migrated by hand, baseline it first with `npm run db:migrate -- --mark-applied`.
+
+**3. Import the repo in Vercel** (or `vercel link` from the CLI). Build settings come from `vercel.json`.
+
+**4. Environment variables** (Project Settings → Environment Variables, or `vercel env add NAME production`):
+
+| Variable | Value |
+|---|---|
+| `DATABASE_URL` | Neon connection string |
+| `SESSION_SECRET` | `openssl rand -hex 32` |
+| `S3_ENDPOINT` | `https://<account-id>.r2.cloudflarestorage.com` |
+| `S3_ACCESS_KEY` / `S3_SECRET_KEY` | R2 API token pair |
+| `S3_BUCKET` | `medivault-documents` |
+| `S3_REGION` | `auto` for R2 (`us-east-1` etc. for AWS) |
+| `AI_BASE_URL` | `https://generativelanguage.googleapis.com/v1beta/openai` |
+| `AI_MODEL` | `gemini-3.6-flash` (`gemini-2.0-flash` and `gemini-2.5-flash` are retired for new accounts; list the models your key can use with `curl "https://generativelanguage.googleapis.com/v1beta/models?key=$AI_API_KEY"`) |
+| `AI_API_KEY` | Gemini API key |
+| `AI_TIMEOUT_MS` | `50000` (must stay under the function's 60 s `maxDuration` in `vercel.json`) |
+| `ALLOWED_ORIGINS` | your production URL, e.g. `https://medivault.vercel.app` |
+| `NODE_ENV` | `production` |
+
+Leave `VITE_API_BASE_URL` **unset** in production: the frontend then uses relative `/api` URLs, which `vercel.json` rewrites to the function. Do not set `VITE_ENABLE_MOCK_AUTH` in production; it would make the site keep accounts in each visitor's browser instead of the database.
+
+**5. Deploy** (`vercel --prod`, or push to `main` once the Git integration is on) and check `https://<your-app>.vercel.app/health` returns `{"ok":true}`.
 
 Operational notes:
-- `/api/*`, `/auth/*`, and `/health` are rewritten to the Express serverless function in `api/server.js`.
-- The catch-all rewrite sends other routes to `index.html`, so React Router works on refresh/deep links.
-- Leave `VITE_API_BASE_URL` empty in production to use relative URLs through Vercel rewrites.
+- `/api/*`, `/auth/*`, and `/health` are rewritten to the Express serverless function in `api/server.js`; everything else serves `index.html` so React Router works on refresh.
+- Vercel serverless functions reject request bodies over 4.5 MB, so uploads are capped at 4 MB when `VERCEL` is set (20 MB locally).
+- `maxDuration` is 60 s on the Hobby plan; the AI call must finish inside it. Gemini Flash usually answers in a few seconds.
+- The bucket must already exist; the function does not create it (only the local `npm run dev:api` does).
+- TLS to Postgres is enabled automatically for non-localhost `DATABASE_URL`s (`server/src/db.js`); set `DATABASE_SSL=false` to override.
 
 ---
 

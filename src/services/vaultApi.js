@@ -33,7 +33,7 @@ export async function uploadDocument({ file, documentType, description, visitDat
 
 export async function downloadDocument(documentId) {
   const token = getToken();
-  if (!API_BASE_URL || !token) throw new Error('Not authenticated.');
+  if (!token) throw new Error('Not authenticated.');
 
   const res = await fetch(`${API_BASE_URL}/api/documents/${encodeURIComponent(documentId)}/download`, {
     headers: { Authorization: `Bearer ${token}` },
@@ -59,7 +59,7 @@ export async function downloadDocument(documentId) {
 
 export async function viewDocument(documentId) {
   const token = getToken();
-  if (!API_BASE_URL || !token) throw new Error('Not authenticated.');
+  if (!token) throw new Error('Not authenticated.');
 
   const res = await fetch(`${API_BASE_URL}/api/documents/${encodeURIComponent(documentId)}/download`, {
     headers: { Authorization: `Bearer ${token}` },
@@ -78,7 +78,7 @@ export async function viewDocument(documentId) {
 
 export async function summarizeDocument(documentId) {
   const token = getToken();
-  if (!API_BASE_URL || !token) throw new Error('Not authenticated.');
+  if (!token) throw new Error('Not authenticated.');
 
   const res = await fetch(`${API_BASE_URL}/api/ai/summarize/${encodeURIComponent(documentId)}`, {
     method: 'POST',

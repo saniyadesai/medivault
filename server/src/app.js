@@ -8,7 +8,9 @@ import { pool, withTransaction } from './db.js';
 import { issueToken, makeSafeUser, normalizeEmail, requireAuth, camelRow, camelRows } from './utils.js';
 import { uploadFile, downloadFile } from './storage.js';
 
-const upload = multer({ storage: multer.memoryStorage(), limits: { fileSize: 20 * 1024 * 1024 } });
+// Vercel serverless functions reject request bodies over 4.5 MB, so cap uploads there when deployed.
+const MAX_UPLOAD_BYTES = process.env.VERCEL ? 4 * 1024 * 1024 : 20 * 1024 * 1024;
+const upload = multer({ storage: multer.memoryStorage(), limits: { fileSize: MAX_UPLOAD_BYTES } });
 const app = express();
 
 // ── CORS: allow only known origins ──
@@ -43,6 +45,9 @@ const registerLimiter = rateLimit({
   message: { message: 'Too many registration attempts. Please try again later.' },
 });
 
+// Behind Vercel/any reverse proxy: trust X-Forwarded-For so express-rate-limit keys on the real client IP
+// (otherwise it logs ERR_ERL_UNEXPECTED_X_FORWARDED_FOR and rate-limits everyone as one IP).
+app.set('trust proxy', 1);
 app.use(express.json({ limit: '5mb' }));
 
 // ── Request logger ──
@@ -836,7 +841,10 @@ app.get('/api/documents/by-ids', requireAuth, async (req, res) => {
     const { ids } = req.query;
     if (!ids) return res.status(400).json({ message: 'ids parameter is required.' });
 
-    const docIds = ids.split(',').map(Number).filter(n => !isNaN(n));
+    // documents.id is a UUID, not an integer — the old .map(Number) turned every id into NaN
+    // and this endpoint always 400'd. Only accept well-formed UUIDs.
+    const UUID_RE = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
+    const docIds = ids.split(',').map((s) => s.trim()).filter((s) => UUID_RE.test(s));
     if (docIds.length === 0) return res.status(400).json({ message: 'Valid document IDs required.' });
 
     const { rows } = await pool.query(

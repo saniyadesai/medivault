@@ -25,12 +25,12 @@ The skill directory has its own `package.json` so Playwright stays out of the ap
 
 Two modes, chosen by `.env` (gitignored):
 
-- **No `.env`, or `VITE_API_BASE_URL` empty** -> `src/services/authApi.js` switches to mock auth (accounts in browser localStorage) and the dashboard services return empty datasets. No backend needed.
+- **`VITE_ENABLE_MOCK_AUTH=true`** -> `src/services/authApi.js` uses mock auth (accounts in browser localStorage) and the dashboards show empty datasets. No backend needed. Put it in `.env` (or `.env.local`) before starting Vite. With no `.env` at all the frontend makes relative `/auth` requests that the Vite dev server cannot answer, so registration fails with "Failed to fetch API".
 - **`VITE_API_BASE_URL=http://localhost:3001`** -> the browser talks to the real Express API, which needs Postgres. See "Run (full stack, local Postgres)".
 
 ## Run (agent path)
 
-Start the dev server on 5177 (the port the repo's own `dev:all` script uses; 5173 is Vite's default and is often taken by another project on a dev machine):
+For the no-backend path create `.env` with just `VITE_ENABLE_MOCK_AUTH=true` first (`printf "VITE_ENABLE_MOCK_AUTH=true\n" > .env`). Start the dev server on 5177 (the port the repo's own `dev:all` script uses; 5173 is Vite's default and is often taken by another project on a dev machine):
 
 ```bash
 nohup npx vite --port 5177 --strictPort > /tmp/medivault-vite.log 2>&1 &

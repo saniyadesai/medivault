@@ -1,5 +1,7 @@
 const API_BASE_URL = import.meta.env.VITE_API_BASE_URL?.trim() || '';
-const USE_MOCK_AUTH = !API_BASE_URL || import.meta.env.VITE_ENABLE_MOCK_AUTH === 'true';
+// Mock auth (localStorage accounts, no backend) only when explicitly enabled.
+// An empty API_BASE_URL means relative URLs, which is what Vercel rewrites expect.
+const USE_MOCK_AUTH = import.meta.env.VITE_ENABLE_MOCK_AUTH === 'true';
 const REGISTERED_USERS_KEY = 'medivault.registered_users';
 
 function normalizeEmail(email) {

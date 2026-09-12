@@ -12,7 +12,7 @@ function getToken() {
 
 async function dashboardRequest(path) {
   const token = getToken();
-  if (!API_BASE_URL || !token) {
+  if (!token) {
     return null;
   }
 

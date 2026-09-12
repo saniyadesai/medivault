@@ -1,0 +1,9 @@
+.env
+.env.*
+!.env.example
+dist
+dist-ssr
+node_modules
+.claude
+db
+docker-compose.yml

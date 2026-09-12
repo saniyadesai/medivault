@@ -11,7 +11,7 @@ function getToken() {
 
 export async function updateProfile(role, data) {
   const token = getToken();
-  if (!API_BASE_URL || !token) throw new Error('Not authenticated.');
+  if (!token) throw new Error('Not authenticated.');
 
   const res = await fetch(`${API_BASE_URL}/api/profile/${encodeURIComponent(role)}`, {
     method: 'PATCH',
