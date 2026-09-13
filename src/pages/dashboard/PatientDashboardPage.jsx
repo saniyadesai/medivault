@@ -12,12 +12,14 @@ import AISummaryModal from '../../components/dashboard/AISummaryModal';
 import { resolveAccessRequest } from '../../services/accessApi';
 import { updateProfile } from '../../services/profileApi';
 import { useAuth } from '../../hooks/useAuth';
+import ChatPanel from '../../components/chat/ChatPanel';
 
 const NAV_ITEMS = [
   { key: 'overview', label: 'Overview' },
   { key: 'documents', label: 'Storage Vault' },
   { key: 'requests', label: 'Access Requests' },
   { key: 'audit', label: 'Audit Log' },
+  { key: 'chat', label: '💬 Chat' },
   { key: 'settings', label: 'Profile & Settings' },
   { key: 'notifications', label: 'Notifications' },
 ];
@@ -313,6 +315,13 @@ export default function PatientDashboardPage() {
         return (
           <DashboardSection id="audit" title="Audit Log" subtitle="Full trail of who accessed what and when.">
             <ActivityFeed items={data.auditEvents} emptyMessage="No audit events yet." />
+          </DashboardSection>
+        );
+
+      case 'chat':
+        return (
+          <DashboardSection id="chat" title="Chat" subtitle="Ask questions about the documents you have access to.">
+            <ChatPanel />
           </DashboardSection>
         );
 

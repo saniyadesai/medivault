@@ -89,3 +89,99 @@ export async function summarizeDocument(documentId) {
   if (!res.ok) throw new Error(data.message || 'AI summary failed.');
   return data;
 }
+
+export async function listChatSessions() {
+  const token = getToken();
+  if (!token) throw new Error('Not authenticated.');
+
+  const res = await fetch(`${API_BASE_URL}/api/chat/sessions`, {
+    headers: { Authorization: `Bearer ${token}` },
+  });
+
+  const data = await res.json().catch(() => ({}));
+  if (!res.ok) throw new Error(data.message || 'Failed to load chat sessions.');
+  return data.sessions;
+}
+
+export async function getChatSession(sessionId) {
+  const token = getToken();
+  if (!token) throw new Error('Not authenticated.');
+
+  const res = await fetch(`${API_BASE_URL}/api/chat/sessions/${encodeURIComponent(sessionId)}`, {
+    headers: { Authorization: `Bearer ${token}` },
+  });
+
+  const data = await res.json().catch(() => ({}));
+  if (!res.ok) throw new Error(data.message || 'Failed to load chat session.');
+  return data.messages;
+}
+
+export async function deleteChatSession(sessionId) {
+  const token = getToken();
+  if (!token) throw new Error('Not authenticated.');
+
+  const res = await fetch(`${API_BASE_URL}/api/chat/sessions/${encodeURIComponent(sessionId)}`, {
+    method: 'DELETE',
+    headers: { Authorization: `Bearer ${token}` },
+  });
+
+  const data = await res.json().catch(() => ({}));
+  if (!res.ok) throw new Error(data.message || 'Failed to delete chat session.');
+  return data;
+}
+
+/**
+ * Send a chat message and stream the answer back. The API responds with
+ * newline-delimited JSON events (`{"type":"citations"|"token"|"done"|"error", ...}`)
+ * — this is an async generator so callers can `for await` the events and update
+ * UI state incrementally as tokens arrive, instead of waiting for the full reply.
+ *
+ * @param {{ sessionId?: string, message: string }} params
+ * @yields {{ type: 'citations', sessionId: string, citations: object[] }
+ *        | { type: 'token', content: string }
+ *        | { type: 'done', sessionId: string, messageId: string }
+ *        | { type: 'error', message: string }}
+ */
+export async function* sendChatMessage({ sessionId, message }) {
+  const token = getToken();
+  if (!token) throw new Error('Not authenticated.');
+
+  const res = await fetch(`${API_BASE_URL}/api/chat`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
+    body: JSON.stringify({ sessionId, message }),
+  });
+
+  if (!res.ok || !res.body) {
+    const data = await res.json().catch(() => ({}));
+    throw new Error(data.message || 'Chat request failed.');
+  }
+
+  const reader = res.body.getReader();
+  const decoder = new TextDecoder();
+  let buffer = '';
+
+  while (true) {
+    const { done, value } = await reader.read();
+    if (done) break;
+    buffer += decoder.decode(value, { stream: true });
+
+    const lines = buffer.split('\n');
+    buffer = lines.pop() || '';
+    for (const line of lines) {
+      if (!line.trim()) continue;
+      try {
+        yield JSON.parse(line);
+      } catch {
+        // skip malformed line rather than breaking the whole stream
+      }
+    }
+  }
+  if (buffer.trim()) {
+    try {
+      yield JSON.parse(buffer);
+    } catch {
+      // ignore trailing partial line
+    }
+  }
+}

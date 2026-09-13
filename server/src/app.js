@@ -7,6 +7,11 @@ import rateLimit from 'express-rate-limit';
 import { pool, withTransaction } from './db.js';
 import { issueToken, makeSafeUser, normalizeEmail, requireAuth, camelRow, camelRows } from './utils.js';
 import { uploadFile, downloadFile } from './storage.js';
+import { getPatientId, getDoctorId, getHospitalId, isAuthorizedForDocument } from './authz.js';
+import { encryptFile, decryptFile } from './crypto.js';
+import { logAudit } from './audit.js';
+import { indexDocument, isEmbeddingConfigured } from './embeddings.js';
+import chatRouter from './chat.js';
 
 // Vercel serverless functions reject request bodies over 4.5 MB, so cap uploads there when deployed.
 const MAX_UPLOAD_BYTES = process.env.VERCEL ? 4 * 1024 * 1024 : 20 * 1024 * 1024;
@@ -257,20 +262,6 @@ const DEFAULT_NOTIFICATIONS = [
   { id: 'document_upload', channel: 'In-App', description: 'When a new document is uploaded', enabled: false },
 ];
 
-// Helper: get the role-specific row id from user_id
-async function getPatientId(userId) {
-  const { rows } = await pool.query('SELECT id FROM patients WHERE user_id = $1', [userId]);
-  return rows[0]?.id || null;
-}
-async function getDoctorId(userId) {
-  const { rows } = await pool.query('SELECT id FROM doctors WHERE user_id = $1', [userId]);
-  return rows[0]?.id || null;
-}
-async function getHospitalId(userId) {
-  const { rows } = await pool.query('SELECT id FROM hospitals WHERE user_id = $1', [userId]);
-  return rows[0]?.id || null;
-}
-
 app.get('/api/dashboard/patient', requireAuth, async (req, res) => {
   try {
     const userId = req.userId;
@@ -488,52 +479,6 @@ app.patch('/api/profile/hospital', requireAuth, async (req, res) => {
 });
 
 // ════════════════════════════════════════
-//  Encryption helpers
-// ════════════════════════════════════════
-
-// -- Appwrite path: single-pass AES-256-GCM (no chunking) --
-function encryptFile(buffer) {
-  const dek = crypto.randomBytes(32);
-  const iv = crypto.randomBytes(12);
-  const checksum = crypto.createHash('sha256').update(buffer).digest('hex');
-  const cipher = crypto.createCipheriv('aes-256-gcm', dek, iv);
-  const encrypted = Buffer.concat([cipher.update(buffer), cipher.final()]);
-  const tag = cipher.getAuthTag();
-  // Layout: [12-byte IV][16-byte authTag][ciphertext]
-  const blob = Buffer.concat([iv, tag, encrypted]);
-  return { dekWrapped: dek.toString('base64'), dekIv: iv.toString('base64'), blob, checksum };
-}
-
-function decryptFile(encryptedBuf, dekWrappedB64) {
-  const dek = Buffer.from(dekWrappedB64, 'base64');
-  const iv = encryptedBuf.subarray(0, 12);
-  const tag = encryptedBuf.subarray(12, 28);
-  const ct = encryptedBuf.subarray(28);
-  const d = crypto.createDecipheriv('aes-256-gcm', dek, iv);
-  d.setAuthTag(tag);
-  return Buffer.concat([d.update(ct), d.final()]);
-}
-
-
-
-// ── Audit log helper ──
-async function logAudit({ patientId, documentId, actorUserId, action, status = 'success', reason, req, metadata }, client) {
-  try {
-    const q = client || pool;
-    await q.query(
-      `INSERT INTO audit_logs (patient_id, document_id, actor_user_id, action, status, reason, ip_address, user_agent, metadata_json)
-       VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9)`,
-      [patientId, documentId || null, actorUserId, action, status, reason || null,
-        req?.ip || req?.headers?.['x-forwarded-for'] || null,
-        req?.headers?.['user-agent'] || null,
-        metadata ? JSON.stringify(metadata) : null]
-    );
-  } catch (err) {
-    console.error('Audit log insert failed:', err.message);
-  }
-}
-
-// ════════════════════════════════════════
 //  Document upload
 // ════════════════════════════════════════
 app.post('/api/documents/upload', requireAuth, upload.single('file'), async (req, res) => {
@@ -598,6 +543,15 @@ app.post('/api/documents/upload', requireAuth, upload.single('file'), async (req
     });
 
     res.status(201).json({ message: 'Document uploaded successfully.', documentId: result });
+
+    // Index for chat/RAG retrieval. Fire-and-forget so upload latency isn't
+    // gated on chunking + embedding; failures are logged, not surfaced to the
+    // uploader (the document still uploaded fine, it just won't be chat-searchable yet).
+    if (isEmbeddingConfigured()) {
+      indexDocument(result).catch((err) => {
+        console.error(`Background indexing failed for document ${result}:`, err.message);
+      });
+    }
   } catch (err) {
     console.error('Upload error:', err.message);
     res.status(500).json({ message: 'Upload failed.' });
@@ -616,22 +570,8 @@ app.get('/api/documents/:id/download', requireAuth, async (req, res) => {
     if (docs.length === 0) return res.status(404).json({ message: 'Document not found.' });
     const doc = docs[0];
 
-    // Authorize: owner, uploader, or active grant holder
-    let authorized = false;
-    if (req.userRole === 'patient') {
-      const pid = await getPatientId(userId);
-      authorized = (doc.patient_id === pid);
-    }
-    if (!authorized && doc.uploaded_by_user_id === userId) authorized = true;
-    if (!authorized) {
-      const grantR = await pool.query(
-        `SELECT id FROM document_access_grants
-         WHERE document_id = $1 AND grantee_user_id = $2 AND status = 'approved'
-           AND revoked_at IS NULL AND (expires_at IS NULL OR expires_at > NOW())`,
-        [docId, userId]
-      );
-      authorized = grantR.rowCount > 0;
-    }
+    // Authorize: owner, uploader, or active grant holder (shared with summarize + chat retrieval)
+    const authorized = await isAuthorizedForDocument(doc, userId, req.userRole);
 
     if (!authorized) {
       await logAudit({
@@ -1043,22 +983,8 @@ app.post('/api/ai/summarize/:id', requireAuth, async (req, res) => {
     if (docs.length === 0) return res.status(404).json({ message: 'Document not found.' });
     const doc = docs[0];
 
-    // Authorize: same logic as download
-    let authorized = false;
-    if (req.userRole === 'patient') {
-      const pid = await getPatientId(userId);
-      authorized = (doc.patient_id === pid);
-    }
-    if (!authorized && doc.uploaded_by_user_id === userId) authorized = true;
-    if (!authorized) {
-      const grantR = await pool.query(
-        `SELECT id FROM document_access_grants
-         WHERE document_id = $1 AND grantee_user_id = $2 AND status = 'approved'
-           AND revoked_at IS NULL AND (expires_at IS NULL OR expires_at > NOW())`,
-        [docId, userId]
-      );
-      authorized = grantR.rowCount > 0;
-    }
+    // Authorize: same shared check as download (server/src/authz.js)
+    const authorized = await isAuthorizedForDocument(doc, userId, req.userRole);
     if (!authorized) return res.status(403).json({ message: 'Access denied.' });
 
     if (!doc.appwrite_file_id) {
@@ -1336,5 +1262,11 @@ app.delete('/api/drug-interactions/:id', requireAuth, async (req, res) => {
     res.status(500).json({ message: 'Failed to delete drug interaction.' });
   }
 });
+
+// ════════════════════════════════════════
+//  Chat + RAG (server/src/chat.js) — mounted at /api, so its internal
+//  '/chat', '/chat/sessions', '/documents/:id/reindex' become /api/chat, etc.
+// ════════════════════════════════════════
+app.use('/api', chatRouter);
 
 export default app;

@@ -12,6 +12,7 @@ import DocumentViewer from '../../components/dashboard/DocumentViewer';
 import AISummaryModal from '../../components/dashboard/AISummaryModal';
 import EmergencyAccess from '../../components/dashboard/EmergencyAccess';
 import DrugInteractions from '../../components/dashboard/DrugInteractions';
+import ChatPanel from '../../components/chat/ChatPanel';
 import { updateProfile } from '../../services/profileApi';
 import { useAuth } from '../../hooks/useAuth';
 
@@ -25,6 +26,7 @@ const NAV_ITEMS = [
   { key: 'activity', label: 'Activity Log' },
   { key: 'emergency', label: '🚨 Emergency Access' },
   { key: 'drug-interactions', label: '💊 Drug Interactions' },
+  { key: 'chat', label: '💬 Chat' },
   { key: 'settings', label: 'Profile & Settings' },
   { key: 'notifications', label: 'Notifications' },
 ];
@@ -403,6 +405,13 @@ export default function DoctorDashboardPage() {
         return (
           <DashboardSection id="drug-interactions" title="Drug Interactions" subtitle="Record and manage drug interaction notes for patients.">
             <DrugInteractions />
+          </DashboardSection>
+        );
+
+      case 'chat':
+        return (
+          <DashboardSection id="chat" title="Chat" subtitle="Ask questions about the documents you have access to.">
+            <ChatPanel />
           </DashboardSection>
         );
 

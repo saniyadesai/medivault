@@ -1,9 +1,9 @@
 ---
 name: run-medivault
-description: Build, run, and drive MediVault (React 19 + Vite frontend, Express API). Use when asked to start MediVault, run the dev server, take a screenshot of its UI, register/login as a patient, doctor, or hospital, or interact with the running app.
+description: Build, run, and drive MediVault (React 19 + Vite frontend, Express API, chat/RAG over pgvector). Use when asked to start MediVault, run the dev server, take a screenshot of its UI, register/login as a patient, doctor, or hospital, test the AI chat feature, or interact with the running app.
 ---
 
-MediVault is a Vite/React frontend plus an Express API that needs Postgres. Drive it by starting the Vite dev server on port 5177 and running `.claude/skills/run-medivault/driver.mjs`, a Playwright script that registers a user through the built-in mock auth, lands on the role dashboard, and screenshots each step. The API is not required for that path; a verified local-Postgres path for the full stack is below.
+MediVault is a Vite/React frontend plus an Express API that needs Postgres. Drive it by starting the Vite dev server on port 5177 and running `.claude/skills/run-medivault/driver.mjs`, a Playwright script that registers a user through the built-in mock auth, lands on the role dashboard, and screenshots each step. The API is not required for that path; a verified local-Postgres path for the full stack, including the Chat + RAG feature, is below.
 
 All paths are relative to the repo root.
 
@@ -52,7 +52,7 @@ The driver, per role, visits `/register/<role>`, fills the form (a fake PDF is g
 
 | flag | default | meaning |
 |---|---|---|
-| `--role patient\|doctor\|hospital\|all` | `patient` | which registration flow(s) to run |
+| `--role patient\|doctor\|hospital\|all\|chat` | `patient` | which flow to run — `chat` needs the full-stack path below, not mock auth |
 | `--base URL` | `http://localhost:5177` | dev server origin |
 | `--shots DIR` | `.claude/skills/run-medivault/shots` | where PNGs land (`0-landing.png`, `<role>-1-register-filled.png`, `<role>-2-dashboard.png`, `patient-3-storage-vault.png`, `failure.png`) |
 
@@ -73,8 +73,9 @@ brew install postgresql@17
 brew services start postgresql@17
 export PATH="/opt/homebrew/opt/postgresql@17/bin:$PATH"
 createdb medivault
+psql -d medivault -c "CREATE EXTENSION IF NOT EXISTS vector;"   # needed by migration 0009 (chat/RAG); brew install pgvector first if missing
 for f in db/migrations/*.sql; do psql -v ON_ERROR_STOP=1 -q -d medivault -f "$f" || break; done
-psql -d medivault -Atc "select tablename from pg_tables where schemaname='public'"   # expect 12 tables
+psql -d medivault -Atc "select tablename from pg_tables where schemaname='public'"   # expect 16 tables
 ```
 
 Then start the file store (Docker Desktop must be running: `open -a Docker`) and pull the vision model (~6 GB, once):
@@ -98,6 +99,12 @@ S3_SECRET_KEY=medivault-secret
 AI_BASE_URL=http://localhost:11434/v1
 AI_MODEL=qwen2.5vl:7b
 AI_TIMEOUT_MS=300000
+# Chat + RAG (server/src/embeddings.js) — needs its own embedding-capable endpoint;
+# AI_BASE_URL above is chat-completions only and doesn't necessarily also embed.
+EMBEDDING_BASE_URL=https://generativelanguage.googleapis.com/v1beta/openai
+EMBEDDING_MODEL=gemini-embedding-001
+EMBEDDING_API_KEY=<a Gemini API key — reuse the one in AI_API_KEY if that's also Gemini>
+EMBEDDING_DIMENSIONS=768
 ```
 
 Start the API, then Vite (restart Vite after editing `.env`), then drive:
@@ -121,13 +128,42 @@ curl -s -o out.png -H "Authorization: Bearer $TOKEN" http://localhost:3001/api/d
 docker compose exec -T minio sh -c 'mc alias set local http://localhost:9000 "$MINIO_ROOT_USER" "$MINIO_ROOT_PASSWORD" >/dev/null && mc ls local/medivault-documents'
 ```
 
-Objects in the bucket are AES-256-GCM ciphertext (first bytes are not the PNG magic `89 50 4e 47`).| xargs kill`.
+Objects in the bucket are AES-256-GCM ciphertext (first bytes are not the PNG magic `89 50 4e 47`).
 
 AI summary (needs the Ollama model pulled; ~30 s on an M4 for a PNG, returns the structured 🏥/📋/⚠️ template):
 
 ```bash
 curl -s -X POST http://localhost:3001/api/ai/summarize/<uuid> -H "Authorization: Bearer $TOKEN"
 # API log: Calling AI model "qwen2.5vl:7b" at http://localhost:11434/v1 ... AI API response: 200
+```
+
+### Chat + RAG
+
+Drive it with `--role chat` (needs `EMBEDDING_BASE_URL`/`EMBEDDING_MODEL` set and pgvector enabled — see Setup above; does **not** work against mock auth, there's no backend to call):
+
+```bash
+node .claude/skills/run-medivault/driver.mjs --role chat
+```
+
+It registers a patient + doctor, uploads a screenshot of the current page as the test document (a fake PDF like the hospital-proof fixture won't do — the server actually extracts/describes real content), opens the Chat tab, and asks about the upload. Background indexing (vision description + embedding) took 5-23s across runs this session, so the driver polls: it resends the question up to 4 times, 8s apart, until a citation badge appears, rather than betting everything on one fixed sleep. Expected tail:
+
+```
+[driver] chat: attempt 1 got no citation yet (indexing still in flight) — retrying in 8s
+[driver] chat: assistant reply: It seems there was a misunderstanding. The document you uploaded is a screenshot of a "Doctor Dashboard"...
+[driver] chat: citation shown: 📄 chat-test-doc.png
+[driver] OK - no console/page/network errors. Screenshots in .claude/skills/run-medivault/shots
+```
+
+Screenshots: `chat-1-tab-open.png`, `chat-2-answered.png` (shows the full retry thread if a retry happened), `chat-test-doc.png` (the uploaded fixture).
+
+To exercise it without the browser: `POST /api/chat` streams newline-delimited JSON (`{"type":"citations"|"token"|"done"|"error", ...}`), not a single JSON body — pipe through `head` or a small Node reader rather than expecting `curl -s | jq` to work on it directly.
+
+```bash
+curl -s -N -X POST http://localhost:3001/api/chat -H "Authorization: Bearer $TOKEN" -H 'Content-Type: application/json' \
+  -d '{"message":"What does this document show?"}'
+# {"type":"citations","sessionId":"...","citations":[{"documentId":"...","documentName":"...",...}]}
+# {"type":"token","content":"The"} ...
+# {"type":"done","sessionId":"...","messageId":"..."}
 ```
 
 ## Run (human path)
@@ -161,7 +197,10 @@ As of commit d7eeb81 this exits 1 with 11 pre-existing errors in `src/` (unused 
 - **Patients cannot upload.** `POST /api/documents/upload` returns 403 `Only doctors and hospitals can upload documents.` for a patient token; upload as a doctor or hospital and pass `patientId`.
 - **The upload response key is `documentId`**, not `document.id`.
 - **License numbers are UNIQUE in Postgres** (`doctors_license_number_key`, hospitals likewise). A driver that reuses a fixed license fails the second real-API run with a 500 on `/auth/register/doctor`; the driver stamps `Date.now()` into them.
-- **The hosted DB drifted from the migrations.** `GET /api/dashboard/patient` 500s with `column ar.document_ids does not exist` on a database built only from migrations 0001-0005. Migration `0006_access_request_document_ids.sql` adds it, and `0007_audit_action_values.sql` adds the `ai_summarize` / `request_document_access` enum values whose absence made `logAudit()` fail silently (`Audit log insert failed: invalid input value for enum audit_action`). Always apply every file in `db/migrations/`.
+- **The hosted DB drifted from the migrations.** `GET /api/dashboard/patient` 500s with `column ar.document_ids does not exist` on a database built only from migrations 0001-0005. Migration `0006_access_request_document_ids.sql` adds it, and `0007_audit_action_values.sql` adds the `ai_summarize` / `request_document_access` enum values whose absence made `logAudit()` fail silently (`Audit log insert failed: invalid input value for enum audit_action`). Always apply every file in `db/migrations/` — there are 9 as of this writing, through `0009_chat_and_rag.sql`.
+- **Registration is rate-limited to 10/hour per IP** (`server/src/app.js`, `registerLimiter`). Running the driver repeatedly while iterating (both `--role all` and `--role chat` each register 2-3 accounts) burns through this fast — `POST /auth/register/*` starts returning `{"message":"Too many registration attempts..."}"` with every field still validating fine, which looks like a hang (the driver's `waitForURL` just times out) rather than an error. There's no way to reset the in-memory store except restarting the API process; for repeated local testing within the hour, log in with a previously-registered account (`select email from users where role='doctor' order by created_at desc` in psql) instead of registering a new one.
+- **pgvector must be enabled before migration 0009 runs.** `CREATE TABLE document_chunks (... embedding vector(768) ...)` fails outright if the extension isn't installed — `brew install pgvector` (it auto-detects the Homebrew Postgres install) then `CREATE EXTENSION IF NOT EXISTS vector;` before applying migrations.
+- **A fixed sleep after upload is not reliable for the chat driver.** Background indexing (vision description + embedding) took anywhere from 5s to 23s across runs in the same session — a 20s wait once lost that race. The driver retries the chat message instead of padding one sleep further; do the same for any new chat-dependent screenshot.
 
 ## Troubleshooting
 

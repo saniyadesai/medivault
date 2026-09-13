@@ -10,6 +10,7 @@ import { uploadDocument } from '../../services/vaultApi';
 import { revokeGrantsByGrantee } from '../../services/accessApi';
 import { updateProfile } from '../../services/profileApi';
 import EmergencyAccess from '../../components/dashboard/EmergencyAccess';
+import ChatPanel from '../../components/chat/ChatPanel';
 import { useAuth } from '../../hooks/useAuth';
 
 const NAV_ITEMS = [
@@ -19,6 +20,7 @@ const NAV_ITEMS = [
   { key: 'access', label: 'Staff Access' },
   { key: 'compliance', label: 'Compliance & Audit' },
   { key: 'emergency', label: '🚨 Emergency Access' },
+  { key: 'chat', label: '💬 Chat' },
   { key: 'settings', label: 'Profile & Settings' },
   { key: 'notifications', label: 'Notifications' },
 ];
@@ -204,6 +206,13 @@ export default function HospitalDashboardPage() {
         return (
           <DashboardSection id="emergency" title="Emergency Access" subtitle="Initiate 24-hour emergency access to patient records via biometric verification.">
             <EmergencyAccess />
+          </DashboardSection>
+        );
+
+      case 'chat':
+        return (
+          <DashboardSection id="chat" title="Chat" subtitle="Ask questions about the documents you have access to.">
+            <ChatPanel />
           </DashboardSection>
         );
 
