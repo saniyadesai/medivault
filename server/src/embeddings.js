@@ -66,6 +66,19 @@ async function extractPdfText(buffer) {
   if (typeof globalThis.DOMMatrix === 'undefined') {
     globalThis.DOMMatrix = class DOMMatrix {};
   }
+  // pdfjs-dist runs its PDF parsing on a "worker" — in Node it always falls
+  // back to a same-thread "fake worker" that still needs the worker code
+  // itself, loaded via a *dynamic* `import(this.workerSrc)` where workerSrc
+  // is a runtime string. Vercel's build-time file tracer can't follow a
+  // dynamic import built from a variable, so that file silently doesn't
+  // make it into the deployed function and the import fails at request
+  // time. pdfjs-dist checks `globalThis.pdfjsWorker` first, before it ever
+  // attempts that dynamic import — importing the worker module ourselves,
+  // with a static (literal, traceable) specifier, and assigning it there
+  // satisfies that check and skips the dynamic path entirely.
+  if (!globalThis.pdfjsWorker) {
+    globalThis.pdfjsWorker = await import('pdfjs-dist/legacy/build/pdf.worker.mjs');
+  }
   const { PDFParse } = await import('pdf-parse');
   const parser = new PDFParse({ data: buffer });
   try {
