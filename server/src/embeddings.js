@@ -52,7 +52,8 @@ export function chunkText(text, { chunkSize = RAG_CHUNK_SIZE, overlap = RAG_CHUN
 async function extractPdfText(buffer) {
   // Imported lazily, not at module scope, so a failure here is a catchable
   // error inside this one call instead of crashing the whole function on
-  // startup (see the indexDocument() call site's .catch() in app.js).
+  // startup (see the indexDocument() call site's waitUntil(...).catch() in
+  // app.js's upload route).
   //
   // pdfjs-dist's display/canvas.js does `const SCALE_MATRIX = new DOMMatrix();`
   // at MODULE TOP LEVEL — it runs the instant pdfjs-dist is imported, before

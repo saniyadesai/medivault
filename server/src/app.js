@@ -12,6 +12,7 @@ import { encryptFile, decryptFile } from './crypto.js';
 import { logAudit } from './audit.js';
 import { indexDocument, isEmbeddingConfigured } from './embeddings.js';
 import chatRouter from './chat.js';
+import { waitUntil } from '@vercel/functions';
 
 // Vercel serverless functions reject request bodies over 4.5 MB, so cap uploads there when deployed.
 const MAX_UPLOAD_BYTES = process.env.VERCEL ? 4 * 1024 * 1024 : 20 * 1024 * 1024;
@@ -547,10 +548,15 @@ app.post('/api/documents/upload', requireAuth, upload.single('file'), async (req
     // Index for chat/RAG retrieval. Fire-and-forget so upload latency isn't
     // gated on chunking + embedding; failures are logged, not surfaced to the
     // uploader (the document still uploaded fine, it just won't be chat-searchable yet).
+    // waitUntil (not a bare un-awaited call) because on Vercel the serverless
+    // function can be frozen the instant res.json() above resolves — without
+    // it, this promise silently never finishes and nothing gets indexed.
     if (isEmbeddingConfigured()) {
-      indexDocument(result).catch((err) => {
-        console.error(`Background indexing failed for document ${result}:`, err.message);
-      });
+      waitUntil(
+        indexDocument(result).catch((err) => {
+          console.error(`Background indexing failed for document ${result}:`, err.message);
+        })
+      );
     }
   } catch (err) {
     console.error('Upload error:', err.message);
