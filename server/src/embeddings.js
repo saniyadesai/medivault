@@ -50,13 +50,22 @@ export function chunkText(text, { chunkSize = RAG_CHUNK_SIZE, overlap = RAG_CHUN
 }
 
 async function extractPdfText(buffer) {
-  // Imported lazily, not at module scope: pdf-parse pulls in pdfjs-dist, which
-  // tries to load the native @napi-rs/canvas package and falls back to a
-  // DOMMatrix polyfill that doesn't exist in Node — that fallback throws
-  // synchronously at import time in Vercel's serverless runtime, crashing the
-  // whole function (every route, not just this one) before it can even start.
-  // Loading it only when a PDF is actually being indexed contains that crash
-  // to this one call, as a catchable error, instead of taking down the API.
+  // Imported lazily, not at module scope, so a failure here is a catchable
+  // error inside this one call instead of crashing the whole function on
+  // startup (see the indexDocument() call site's .catch() in app.js).
+  //
+  // pdfjs-dist's display/canvas.js does `const SCALE_MATRIX = new DOMMatrix();`
+  // at MODULE TOP LEVEL — it runs the instant pdfjs-dist is imported, before
+  // any rendering is requested, and throws in Node because DOMMatrix is a
+  // browser global. pdfjs-dist's own fix for this is to polyfill DOMMatrix
+  // (along with ImageData/Path2D) from the optional @napi-rs/canvas native
+  // package — but we only ever call getText() here, never render a page, so
+  // that instance's methods are never actually invoked. A real canvas engine
+  // is unnecessary weight (and native-binary risk) for a constructor that
+  // just needs to not throw; a no-op stub satisfies it just as well.
+  if (typeof globalThis.DOMMatrix === 'undefined') {
+    globalThis.DOMMatrix = class DOMMatrix {};
+  }
   const { PDFParse } = await import('pdf-parse');
   const parser = new PDFParse({ data: buffer });
   try {
