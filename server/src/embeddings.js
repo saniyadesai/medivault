@@ -3,7 +3,6 @@
 // AI_API_KEY/AI_TIMEOUT_MS pattern already used by the /api/ai/summarize/:id
 // endpoint in app.js, but with its own EMBEDDING_* env vars — a chat-completions
 // endpoint doesn't necessarily also serve embeddings.
-import { PDFParse } from 'pdf-parse';
 import { pool } from './db.js';
 import { downloadFile } from './storage.js';
 import { decryptFile } from './crypto.js';
@@ -51,6 +50,14 @@ export function chunkText(text, { chunkSize = RAG_CHUNK_SIZE, overlap = RAG_CHUN
 }
 
 async function extractPdfText(buffer) {
+  // Imported lazily, not at module scope: pdf-parse pulls in pdfjs-dist, which
+  // tries to load the native @napi-rs/canvas package and falls back to a
+  // DOMMatrix polyfill that doesn't exist in Node — that fallback throws
+  // synchronously at import time in Vercel's serverless runtime, crashing the
+  // whole function (every route, not just this one) before it can even start.
+  // Loading it only when a PDF is actually being indexed contains that crash
+  // to this one call, as a catchable error, instead of taking down the API.
+  const { PDFParse } = await import('pdf-parse');
   const parser = new PDFParse({ data: buffer });
   try {
     const result = await parser.getText();
