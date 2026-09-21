@@ -55,6 +55,7 @@ export default function PatientDashboardPage() {
   const [profile, setProfile] = useState({
     fullName: user?.profile?.fullName || '',
     bloodGroup: user?.profile?.bloodGroup || '',
+    gender: user?.profile?.gender || '',
     emergencyContact: user?.profile?.emergencyContact || '',
   });
   const [notifySettings, setNotifySettings] = useState({});
@@ -109,6 +110,7 @@ export default function PatientDashboardPage() {
       await updateProfile('patient', {
         fullName: profile.fullName,
         bloodGroup: profile.bloodGroup,
+        gender: profile.gender,
         emergencyContactName: profile.emergencyContact,
       });
       setFeedback('Profile saved successfully!');
@@ -337,6 +339,10 @@ export default function PatientDashboardPage() {
               <div className="dashboard-field">
                 <label htmlFor="bloodGroup">Blood Group</label>
                 <input id="bloodGroup" name="bloodGroup" value={profile.bloodGroup} onChange={handleProfileChange} />
+              </div>
+              <div className="dashboard-field">
+                <label htmlFor="gender">Gender</label>
+                <input id="gender" name="gender" value={profile.gender} onChange={handleProfileChange} />
               </div>
               <div className="dashboard-field span-2">
                 <label htmlFor="emergencyContact">Emergency Contact</label>

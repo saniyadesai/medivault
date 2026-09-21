@@ -79,10 +79,10 @@ app.get('/health', async (_req, res) => {
 // ════════════════════════════════════════
 async function insertPatientProfile(client, userId, data) {
   const { rows } = await client.query(
-    `INSERT INTO patients (user_id, full_name, date_of_birth, blood_group)
-     VALUES ($1, $2, $3, $4)
-     RETURNING full_name, date_of_birth, blood_group`,
-    [userId, data.fullName, data.dateOfBirth || null, data.bloodGroup || null]
+    `INSERT INTO patients (user_id, full_name, date_of_birth, blood_group, gender)
+     VALUES ($1, $2, $3, $4, $5)
+     RETURNING full_name, date_of_birth, blood_group, gender`,
+    [userId, data.fullName, data.dateOfBirth || null, data.bloodGroup || null, data.gender || null]
   );
   return camelRow(rows[0]);
 }
@@ -232,7 +232,7 @@ app.post('/auth/login', loginLimiter, async (req, res) => {
     // Load profile with camelCase keys
     let profile = {};
     if (role === 'patient') {
-      const r = await pool.query('SELECT full_name, date_of_birth, blood_group FROM patients WHERE user_id = $1', [user.id]);
+      const r = await pool.query('SELECT full_name, date_of_birth, blood_group, gender FROM patients WHERE user_id = $1', [user.id]);
       profile = camelRow(r.rows[0]) || {};
     } else if (role === 'doctor') {
       const r = await pool.query('SELECT full_name, license_number, specialization FROM doctors WHERE user_id = $1', [user.id]);
@@ -417,17 +417,18 @@ app.patch('/api/profile/patient', requireAuth, async (req, res) => {
   try {
     const patientId = await getPatientId(req.userId);
     if (!patientId) return res.status(404).json({ message: 'Patient profile not found.' });
-    const { fullName, bloodGroup, emergencyContactPhone, emergencyContactName } = req.body;
+    const { fullName, bloodGroup, gender, emergencyContactPhone, emergencyContactName } = req.body;
     const { rows } = await pool.query(
       `UPDATE patients SET
          full_name = COALESCE($1, full_name),
          blood_group = COALESCE($2, blood_group),
-         emergency_contact_phone = COALESCE($3, emergency_contact_phone),
-         emergency_contact_name = COALESCE($4, emergency_contact_name),
+         gender = COALESCE($3, gender),
+         emergency_contact_phone = COALESCE($4, emergency_contact_phone),
+         emergency_contact_name = COALESCE($5, emergency_contact_name),
          updated_at = NOW()
-       WHERE id = $5
-       RETURNING full_name, date_of_birth, blood_group, emergency_contact_phone, emergency_contact_name`,
-      [fullName || null, bloodGroup || null, emergencyContactPhone || null, emergencyContactName || null, patientId]
+       WHERE id = $6
+       RETURNING full_name, date_of_birth, blood_group, gender, emergency_contact_phone, emergency_contact_name`,
+      [fullName || null, bloodGroup || null, gender || null, emergencyContactPhone || null, emergencyContactName || null, patientId]
     );
     res.json({ message: 'Profile updated.', profile: camelRow(rows[0]) });
   } catch (err) {
@@ -719,7 +720,7 @@ app.get('/api/patients/search', requireAuth, async (req, res) => {
 
     const emailNorm = normalizeEmail(email);
     const pr = await pool.query(
-      `SELECT p.id AS patient_id, p.full_name, u.email, p.blood_group, p.date_of_birth
+      `SELECT p.id AS patient_id, p.full_name, u.email, p.blood_group, p.date_of_birth, p.gender
        FROM patients p JOIN users u ON u.id = p.user_id WHERE u.email = $1`,
       [emailNorm]
     );
@@ -741,6 +742,7 @@ app.get('/api/patients/search', requireAuth, async (req, res) => {
         email: patient.email,
         bloodGroup: patient.blood_group,
         dateOfBirth: patient.date_of_birth,
+        gender: patient.gender,
       },
       documents: camelRows(docs.rows),
     });
@@ -878,7 +880,7 @@ app.post('/api/emergency-access/initiate', requireAuth, async (req, res) => {
 
     // Find patient user (including health detail columns)
     const patientUserR = await pool.query(
-      `SELECT u.id AS user_id, p.id AS patient_id, p.full_name, p.date_of_birth, p.blood_group,
+      `SELECT u.id AS user_id, p.id AS patient_id, p.full_name, p.date_of_birth, p.blood_group, p.gender,
               p.emergency_contact_phone, p.emergency_contact_name, p.emergency_consent_enabled,
               p.allergies, p.chronic_conditions, p.current_medications
        FROM users u JOIN patients p ON p.user_id = u.id
@@ -945,7 +947,7 @@ app.post('/api/emergency-access/initiate', requireAuth, async (req, res) => {
     const patient = {
       name: pt.full_name,
       dob: pt.date_of_birth ? new Date(pt.date_of_birth).toLocaleDateString('en-IN', { day: '2-digit', month: 'short', year: 'numeric' }) : null,
-      gender: null,
+      gender: pt.gender,
       bloodGroup: pt.blood_group,
       allergies: parseList(pt.allergies),
       conditions: parseList(pt.chronic_conditions),
