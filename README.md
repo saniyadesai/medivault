@@ -10,26 +10,6 @@
 [![MinIO](https://img.shields.io/badge/MinIO_(S3)-C72E49?style=for-the-badge&logo=minio&logoColor=white)](https://min.io/)
 [![Ollama](https://img.shields.io/badge/Ollama-000000?style=for-the-badge&logo=ollama&logoColor=white)](https://ollama.com/)
 
-🥈 **2nd Place — Udhbhav 2k26** 🏆
-
-</div>
-
----
-
-## 👥 Built By
-
-> 🥈 **2nd Place — Udhbhav 2k26**
-
-| Name | GitHub |
-|------|--------|
-| Aharon Kosetti | [@aharon-kumar-kosetti](https://github.com/aharon-kumar-kosetti) |
-| Bhanu Prakash Yirri | [@bhanuprakashyirri](https://github.com/bhanuprakashyirri) |
-| Mohith Kumar Baggu | [@mohithkumar64](https://github.com/mohithkumar64) |
-| Abishai Jogi | [@abishai-jogi](https://github.com/abishai-jogi) |
-| Saketh | [@venkata-saketh-reddy](https://github.com/venkata-saketh-reddy) |
-| Ram Sai | [@ramsaik3339-cloud](https://github.com/ramsaik3339-cloud) | 
-
----
 
 ## 🩺 The Problem
 
