@@ -10,7 +10,7 @@ import { uploadFile, downloadFile } from './storage.js';
 import { getPatientId, getDoctorId, getHospitalId, isAuthorizedForDocument } from './authz.js';
 import { encryptFile, decryptFile } from './crypto.js';
 import { logAudit } from './audit.js';
-import { indexDocument, isEmbeddingConfigured } from './embeddings.js';
+import { indexDocument, isEmbeddingConfigured, extractPdfText } from './embeddings.js';
 import chatRouter from './chat.js';
 import { waitUntil } from '@vercel/functions';
 
@@ -1009,6 +1009,33 @@ app.post('/api/ai/summarize/:id', requireAuth, async (req, res) => {
 
     console.log(`Document size: ${plainBuffer.length} bytes, base64 length: ${base64Data.length}`);
 
+    // For anything that isn't an image, the model needs the actual document
+    // content, not just its filename/size — that was the bug: PDFs (and any
+    // other non-image type) went to the AI with no content at all, just a
+    // metadata description, so there was nothing to actually summarize.
+    let extractedText = '';
+    const MAX_SUMMARY_CHARS = 15000;
+    if (!mimeType.startsWith('image/')) {
+      if (mimeType === 'application/pdf') {
+        try {
+          extractedText = await extractPdfText(plainBuffer);
+        } catch (err) {
+          console.error('PDF text extraction failed for summarize:', err.message);
+          return res.status(422).json({ message: `Could not read this PDF for analysis: ${err.message}` });
+        }
+      } else if (mimeType.startsWith('text/') || mimeType === 'application/json') {
+        extractedText = plainBuffer.toString('utf8');
+      }
+      if (!extractedText || !extractedText.trim()) {
+        return res.status(422).json({
+          message: `No readable text found in this document (${mimeType}) — AI summary isn't available for this file type yet.`,
+        });
+      }
+      if (extractedText.length > MAX_SUMMARY_CHARS) {
+        extractedText = `${extractedText.slice(0, MAX_SUMMARY_CHARS)}\n\n[...truncated for length...]`;
+      }
+    }
+
     const systemPrompt = `You are MediVault AI — an intelligent medical document analysis and summarization assistant.
 AUDIENCE: Patients, Doctors. TONE: Warm, clear, professional.
 
@@ -1043,7 +1070,7 @@ RULES:
               { type: 'text', text: `Analyze this medical image named "${doc.original_filename}" (${mimeType}, ${plainBuffer.length} bytes). Provide a comprehensive analysis in the format specified above.` },
               { type: 'image_url', image_url: { url: `data:${mimeType};base64,${base64Data}` } }
             ]
-            : `Analyze this medical document named "${doc.original_filename}" (${mimeType}, ${plainBuffer.length} bytes). Provide a comprehensive analysis in the format specified above.`,
+            : `Analyze this medical document named "${doc.original_filename}" (${mimeType}).\n\nDocument content:\n"""\n${extractedText}\n"""\n\nProvide a comprehensive analysis in the format specified above, based on the document content.`,
         },
       ],
       max_tokens: 1500,

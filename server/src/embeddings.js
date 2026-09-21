@@ -49,7 +49,7 @@ export function chunkText(text, { chunkSize = RAG_CHUNK_SIZE, overlap = RAG_CHUN
   return chunks.filter(Boolean);
 }
 
-async function extractPdfText(buffer) {
+export async function extractPdfText(buffer) {
   // Imported lazily, not at module scope, so a failure here is a catchable
   // error inside this one call instead of crashing the whole function on
   // startup (see the indexDocument() call site's waitUntil(...).catch() in
