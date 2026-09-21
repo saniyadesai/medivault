@@ -5,7 +5,7 @@ import multer from 'multer';
 import bcrypt from 'bcryptjs';
 import rateLimit from 'express-rate-limit';
 import { pool, withTransaction } from './db.js';
-import { issueToken, makeSafeUser, normalizeEmail, requireAuth, camelRow, camelRows, calculateAge } from './utils.js';
+import { issueToken, makeSafeUser, normalizeEmail, requireAuth, camelRow, camelRows, calculateAge, fetchWithRetry } from './utils.js';
 import { uploadFile, downloadFile } from './storage.js';
 import { getPatientId, getDoctorId, getHospitalId, isAuthorizedForDocument } from './authz.js';
 import { encryptFile, decryptFile } from './crypto.js';
@@ -1083,7 +1083,7 @@ RULES:
       const controller = new AbortController();
       const timeoutId = setTimeout(() => controller.abort(), AI_TIMEOUT_MS);
 
-      aiRes = await fetch(aiUrl, {
+      aiRes = await fetchWithRetry(aiUrl, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',

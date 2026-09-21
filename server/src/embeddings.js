@@ -6,6 +6,7 @@
 import { pool } from './db.js';
 import { downloadFile } from './storage.js';
 import { decryptFile } from './crypto.js';
+import { fetchWithRetry } from './utils.js';
 
 const EMBEDDING_BASE_URL = (process.env.EMBEDDING_BASE_URL || '').replace(/\/$/, '');
 const EMBEDDING_MODEL = process.env.EMBEDDING_MODEL || '';
@@ -101,7 +102,7 @@ async function describeImage(buffer, mimeType, filename) {
   const controller = new AbortController();
   const timeoutId = setTimeout(() => controller.abort(), AI_TIMEOUT_MS);
   try {
-    const res = await fetch(`${AI_BASE_URL}/chat/completions`, {
+    const res = await fetchWithRetry(`${AI_BASE_URL}/chat/completions`, {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
@@ -150,7 +151,7 @@ async function embedBatch(texts) {
   if (!isEmbeddingConfigured()) throw new Error('EMBEDDING_BASE_URL/EMBEDDING_MODEL not configured.');
   if (texts.length === 0) return [];
 
-  const res = await fetch(`${EMBEDDING_BASE_URL}/embeddings`, {
+  const res = await fetchWithRetry(`${EMBEDDING_BASE_URL}/embeddings`, {
     method: 'POST',
     headers: {
       'Content-Type': 'application/json',

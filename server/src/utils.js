@@ -5,6 +5,28 @@ export function normalizeEmail(email = '') {
 }
 
 /**
+ * fetch() with a couple of retries on transient upstream failures (503
+ * "high demand" from the AI provider, 429 rate limits) — both are common,
+ * usually clear within seconds, and shouldn't surface as a user-facing
+ * error on the first hit. Same call signature as fetch(); returns the
+ * final response (success or last failure) for the caller to handle
+ * exactly as it already does with a bare fetch() — no other code changes
+ * needed at call sites.
+ */
+export async function fetchWithRetry(url, options, { retries = 2, retryDelayMs = 1200, retryableStatuses = [503, 429] } = {}) {
+  let res;
+  for (let attempt = 0; attempt <= retries; attempt++) {
+    res = await fetch(url, options);
+    if (res.ok || !retryableStatuses.includes(res.status)) return res;
+    if (attempt < retries) {
+      console.warn(`Upstream ${url} returned ${res.status}, retrying (${attempt + 1}/${retries}) in ${retryDelayMs * (attempt + 1)}ms...`);
+      await new Promise((r) => setTimeout(r, retryDelayMs * (attempt + 1)));
+    }
+  }
+  return res;
+}
+
+/**
  * Age in whole years as of today, from a date_of_birth column value.
  * Doctors read age directly, not a raw DOB they have to do math on — this
  * is what actually surfaces the "age" a doctor asked for, not just storing

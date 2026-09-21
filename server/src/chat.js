@@ -3,7 +3,7 @@
 // routes here (e.g. '/chat') become /api/chat.
 import express from 'express';
 import { pool } from './db.js';
-import { requireAuth, camelRow, camelRows } from './utils.js';
+import { requireAuth, camelRow, camelRows, fetchWithRetry } from './utils.js';
 import { getAuthorizedDocumentIds, isAuthorizedForDocument } from './authz.js';
 import { retrieveRelevantChunks, indexDocument, isEmbeddingConfigured } from './embeddings.js';
 import { logAudit } from './audit.js';
@@ -120,7 +120,7 @@ router.post('/chat', requireAuth, async (req, res) => {
 
     let fullText = '';
     try {
-      const upstream = await fetch(`${AI_BASE_URL}/chat/completions`, {
+      const upstream = await fetchWithRetry(`${AI_BASE_URL}/chat/completions`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
