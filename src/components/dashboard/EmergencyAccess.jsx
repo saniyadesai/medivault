@@ -217,7 +217,11 @@ function PatientScreen({ patient, endsAt, onViewRecords, onReset }) {
           <div className="ea-avatar">👤</div>
           <div>
             <div className="ea-patient-name">{p.name}</div>
-            <div className="ea-patient-meta">{p.dob ? `DOB: ${p.dob} · ` : ''}{p.gender || 'N/A'}</div>
+            <div className="ea-patient-meta">
+              {typeof p.age === 'number' ? `${p.age}y · ` : ''}
+              {p.gender || 'N/A'}
+              {p.dob ? ` · DOB: ${p.dob}` : ''}
+            </div>
             <div className="ea-patient-id">MediVault Patient</div>
             <span className="ea-biometric-tag">✓ Biometric Match Confirmed</span>
           </div>

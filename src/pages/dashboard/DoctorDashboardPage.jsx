@@ -301,7 +301,7 @@ export default function DoctorDashboardPage() {
                   Patient Found: {searchResult.patient.fullName}
                 </p>
                 <p style={{ margin: 0, fontSize: '0.9rem', color: '#555' }}>
-                  Blood Group: {searchResult.patient.bloodGroup || 'N/A'} | DOB: {searchResult.patient.dateOfBirth || 'N/A'} | Gender: {searchResult.patient.gender || 'N/A'}
+                  Age: {searchResult.patient.age ?? 'N/A'} | Gender: {searchResult.patient.gender || 'N/A'} | Blood Group: {searchResult.patient.bloodGroup || 'N/A'} | DOB: {searchResult.patient.dateOfBirth || 'N/A'}
                 </p>
               </div>
             )}

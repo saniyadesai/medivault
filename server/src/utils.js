@@ -4,6 +4,27 @@ export function normalizeEmail(email = '') {
   return String(email).trim().toLowerCase();
 }
 
+/**
+ * Age in whole years as of today, from a date_of_birth column value.
+ * Doctors read age directly, not a raw DOB they have to do math on — this
+ * is what actually surfaces the "age" a doctor asked for, not just storing
+ * date_of_birth (which was already collected before that request).
+ * @param {Date|string|null} dateOfBirth
+ * @returns {number|null}
+ */
+export function calculateAge(dateOfBirth) {
+  if (!dateOfBirth) return null;
+  const dob = new Date(dateOfBirth);
+  if (Number.isNaN(dob.getTime())) return null;
+  const today = new Date();
+  let age = today.getFullYear() - dob.getFullYear();
+  const hasNotHadBirthdayYet =
+    today.getMonth() < dob.getMonth() ||
+    (today.getMonth() === dob.getMonth() && today.getDate() < dob.getDate());
+  if (hasNotHadBirthdayYet) age--;
+  return age;
+}
+
 /* ── snake_case → camelCase row mapper ── */
 function toCamel(str) {
   return str.replace(/_([a-z])/g, (_, c) => c.toUpperCase());
