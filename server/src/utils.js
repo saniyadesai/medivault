@@ -5,15 +5,18 @@ export function normalizeEmail(email = '') {
 }
 
 /**
- * fetch() with a couple of retries on transient upstream failures (503
- * "high demand" from the AI provider, 429 rate limits) — both are common,
- * usually clear within seconds, and shouldn't surface as a user-facing
- * error on the first hit. Same call signature as fetch(); returns the
- * final response (success or last failure) for the caller to handle
- * exactly as it already does with a bare fetch() — no other code changes
- * needed at call sites.
+ * fetch() with retries on transient upstream failures (503 "high demand"
+ * from the AI provider, 429 rate limits). Verified this isn't about request
+ * size or a hard rejection: the identical request shape/size sometimes
+ * 503s in ~20s and sometimes succeeds in ~50s — genuine intermittent
+ * capacity variance on the provider's side, not a bug in what we send.
+ * With a 240s AI_TIMEOUT_MS budget (see app.js/chat.js/embeddings.js) there's
+ * real room to just try again rather than surface the first failure. Same
+ * call signature as fetch(); returns the final response (success or last
+ * failure) for the caller to handle exactly as it already does with a bare
+ * fetch() — no other code changes needed at call sites.
  */
-export async function fetchWithRetry(url, options, { retries = 2, retryDelayMs = 1200, retryableStatuses = [503, 429] } = {}) {
+export async function fetchWithRetry(url, options, { retries = 3, retryDelayMs = 2500, retryableStatuses = [503, 429] } = {}) {
   let res;
   for (let attempt = 0; attempt <= retries; attempt++) {
     res = await fetch(url, options);
