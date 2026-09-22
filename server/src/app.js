@@ -5,7 +5,7 @@ import multer from 'multer';
 import bcrypt from 'bcryptjs';
 import rateLimit from 'express-rate-limit';
 import { pool, withTransaction } from './db.js';
-import { issueToken, makeSafeUser, normalizeEmail, requireAuth, camelRow, camelRows, calculateAge, fetchWithRetry } from './utils.js';
+import { issueToken, makeSafeUser, normalizeEmail, requireAuth, camelRow, camelRows, calculateAge, callAIChatCompletion } from './utils.js';
 import { uploadFile, downloadFile } from './storage.js';
 import { getPatientId, getDoctorId, getHospitalId, isAuthorizedForDocument } from './authz.js';
 import { encryptFile, decryptFile } from './crypto.js';
@@ -983,6 +983,11 @@ app.post('/api/ai/summarize/:id', requireAuth, async (req, res) => {
     const AI_API_KEY = process.env.AI_API_KEY || process.env.GEMINI_API_KEY || '';
     const AI_BASE_URL = (process.env.AI_BASE_URL || (process.env.GEMINI_API_KEY ? 'https://openrouter.ai/api/v1' : '')).replace(/\/$/, '');
     const AI_MODEL = process.env.AI_MODEL || 'openai/gpt-4o';
+    // gemini-3.6-flash (the reasoning-heavy primary model) has real, verified
+    // intermittent 503 "high demand" capacity issues on Google's side — not
+    // fixable by retries alone. gemini-3.1-flash-lite is a fast, verified-working
+    // fallback (~2s for a full document vs 20-50s+ and frequent 503s on primary).
+    const AI_FALLBACK_MODEL = process.env.AI_FALLBACK_MODEL || '';
     const AI_TIMEOUT_MS = Number(process.env.AI_TIMEOUT_MS) || 60000;
     if (!AI_BASE_URL) return res.status(503).json({ message: 'AI service not configured. Set AI_BASE_URL and AI_MODEL in .env.' });
 
@@ -1056,8 +1061,8 @@ RULES:
 - High priority ⚠️⚠️ for lesions, masses, or fractures.`;
 
     const aiUrl = `${AI_BASE_URL}/chat/completions`;
-    const aiBody = {
-      model: AI_MODEL,
+    const buildAiBody = (model) => ({
+      model,
       messages: [
         {
           role: 'system',
@@ -1075,23 +1080,26 @@ RULES:
       ],
       max_tokens: 1500,
       temperature: 0.7,
-    };
+    });
 
     let aiRes;
+    let modelUsed = AI_MODEL;
     try {
       console.log(`Calling AI model "${AI_MODEL}" at ${AI_BASE_URL} (timeout ${AI_TIMEOUT_MS} ms)...`);
       const controller = new AbortController();
       const timeoutId = setTimeout(() => controller.abort(), AI_TIMEOUT_MS);
 
-      aiRes = await fetchWithRetry(aiUrl, {
-        method: 'POST',
+      aiRes = await callAIChatCompletion({
+        url: aiUrl,
         headers: {
           'Content-Type': 'application/json',
           ...(AI_API_KEY ? { Authorization: `Bearer ${AI_API_KEY}` } : {}),
           'HTTP-Referer': 'https://medivault.local',
           'X-Title': 'MediVault',
         },
-        body: JSON.stringify(aiBody),
+        buildBody: buildAiBody,
+        primaryModel: AI_MODEL,
+        fallbackModel: AI_FALLBACK_MODEL,
         signal: controller.signal,
       });
 
@@ -1139,10 +1147,14 @@ RULES:
 
     const aiData = await aiRes.json();
     const summary = aiData.choices?.[0]?.message?.content || 'No summary generated.';
+    modelUsed = aiData.model || AI_MODEL;
+    if (modelUsed !== AI_MODEL) {
+      console.warn(`Summary served by fallback model "${modelUsed}" (primary "${AI_MODEL}" was unavailable).`);
+    }
 
     await logAudit({
       patientId: doc.patient_id, documentId: docId, actorUserId: userId,
-      action: 'ai_summarize', req, metadata: { model: AI_MODEL, baseUrl: AI_BASE_URL },
+      action: 'ai_summarize', req, metadata: { model: modelUsed, baseUrl: AI_BASE_URL },
     });
 
     res.json({ summary, filename: doc.original_filename });

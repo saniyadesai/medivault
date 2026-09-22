@@ -30,6 +30,33 @@ export async function fetchWithRetry(url, options, { retries = 3, retryDelayMs =
 }
 
 /**
+ * Chat-completions call with retry (fetchWithRetry) on the primary model,
+ * then one attempt on a fallback model if the primary is still failing
+ * with a retryable status after all its retries. Verified this is worth
+ * having: the primary model (gemini-3.6-flash, a reasoning model) has
+ * real intermittent capacity problems, while a lighter fallback model
+ * answered the identical request in ~2s with no retries needed.
+ * `buildBody(model)` lets each call site's message/prompt construction
+ * stay in the call site — this just handles which model goes in and
+ * when to give up on it.
+ */
+export async function callAIChatCompletion({ url, headers, buildBody, primaryModel, fallbackModel, signal, retryOptions }) {
+  const attempt = (model) => fetchWithRetry(url, {
+    method: 'POST',
+    headers,
+    body: JSON.stringify(buildBody(model)),
+    signal,
+  }, retryOptions);
+
+  const primaryRes = await attempt(primaryModel);
+  if (primaryRes.ok || !fallbackModel || ![503, 429].includes(primaryRes.status)) {
+    return primaryRes;
+  }
+  console.warn(`Primary model "${primaryModel}" still failing (${primaryRes.status}) after retries, trying fallback "${fallbackModel}"...`);
+  return attempt(fallbackModel);
+}
+
+/**
  * Age in whole years as of today, from a date_of_birth column value.
  * Doctors read age directly, not a raw DOB they have to do math on — this
  * is what actually surfaces the "age" a doctor asked for, not just storing

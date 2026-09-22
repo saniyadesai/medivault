@@ -6,7 +6,7 @@
 import { pool } from './db.js';
 import { downloadFile } from './storage.js';
 import { decryptFile } from './crypto.js';
-import { fetchWithRetry } from './utils.js';
+import { fetchWithRetry, callAIChatCompletion } from './utils.js';
 
 const EMBEDDING_BASE_URL = (process.env.EMBEDDING_BASE_URL || '').replace(/\/$/, '');
 const EMBEDDING_MODEL = process.env.EMBEDDING_MODEL || '';
@@ -22,6 +22,7 @@ const RAG_CHUNK_OVERLAP = Number(process.env.RAG_CHUNK_OVERLAP) || 200;
 const AI_API_KEY = process.env.AI_API_KEY || process.env.GEMINI_API_KEY || '';
 const AI_BASE_URL = (process.env.AI_BASE_URL || (process.env.GEMINI_API_KEY ? 'https://openrouter.ai/api/v1' : '')).replace(/\/$/, '');
 const AI_MODEL = process.env.AI_MODEL || 'openai/gpt-4o';
+const AI_FALLBACK_MODEL = process.env.AI_FALLBACK_MODEL || '';
 const AI_TIMEOUT_MS = Number(process.env.AI_TIMEOUT_MS) || 60000;
 
 export function isEmbeddingConfigured() {
@@ -102,14 +103,14 @@ async function describeImage(buffer, mimeType, filename) {
   const controller = new AbortController();
   const timeoutId = setTimeout(() => controller.abort(), AI_TIMEOUT_MS);
   try {
-    const res = await fetchWithRetry(`${AI_BASE_URL}/chat/completions`, {
-      method: 'POST',
+    const res = await callAIChatCompletion({
+      url: `${AI_BASE_URL}/chat/completions`,
       headers: {
         'Content-Type': 'application/json',
         ...(AI_API_KEY ? { Authorization: `Bearer ${AI_API_KEY}` } : {}),
       },
-      body: JSON.stringify({
-        model: AI_MODEL,
+      buildBody: (model) => ({
+        model,
         messages: [{
           role: 'user',
           content: [
@@ -120,6 +121,8 @@ async function describeImage(buffer, mimeType, filename) {
         max_tokens: 1200,
         temperature: 0.2,
       }),
+      primaryModel: AI_MODEL,
+      fallbackModel: AI_FALLBACK_MODEL,
       signal: controller.signal,
     });
     if (!res.ok) throw new Error(`Image description failed: ${res.status} ${await res.text()}`);

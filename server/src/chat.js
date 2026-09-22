@@ -3,7 +3,7 @@
 // routes here (e.g. '/chat') become /api/chat.
 import express from 'express';
 import { pool } from './db.js';
-import { requireAuth, camelRow, camelRows, fetchWithRetry } from './utils.js';
+import { requireAuth, camelRow, camelRows, callAIChatCompletion } from './utils.js';
 import { getAuthorizedDocumentIds, isAuthorizedForDocument } from './authz.js';
 import { retrieveRelevantChunks, indexDocument, isEmbeddingConfigured } from './embeddings.js';
 import { logAudit } from './audit.js';
@@ -13,6 +13,7 @@ const router = express.Router();
 const AI_API_KEY = process.env.AI_API_KEY || process.env.GEMINI_API_KEY || '';
 const AI_BASE_URL = (process.env.AI_BASE_URL || (process.env.GEMINI_API_KEY ? 'https://openrouter.ai/api/v1' : '')).replace(/\/$/, '');
 const AI_MODEL = process.env.AI_MODEL || 'openai/gpt-4o';
+const AI_FALLBACK_MODEL = process.env.AI_FALLBACK_MODEL || '';
 const AI_TIMEOUT_MS = Number(process.env.AI_TIMEOUT_MS) || 60000;
 
 const HISTORY_LIMIT = 20; // recent messages included as conversation context
@@ -120,19 +121,21 @@ router.post('/chat', requireAuth, async (req, res) => {
 
     let fullText = '';
     try {
-      const upstream = await fetchWithRetry(`${AI_BASE_URL}/chat/completions`, {
-        method: 'POST',
+      const upstream = await callAIChatCompletion({
+        url: `${AI_BASE_URL}/chat/completions`,
         headers: {
           'Content-Type': 'application/json',
           ...(AI_API_KEY ? { Authorization: `Bearer ${AI_API_KEY}` } : {}),
         },
-        body: JSON.stringify({
-          model: AI_MODEL,
+        buildBody: (model) => ({
+          model,
           messages: upstreamMessages,
           max_tokens: 1500,
           temperature: 0.3,
           stream: true,
         }),
+        primaryModel: AI_MODEL,
+        fallbackModel: AI_FALLBACK_MODEL,
         signal: controller.signal,
       });
 
