@@ -11,7 +11,7 @@ export default function Footer() {
                     <span className="footer-logo-text">MediVault</span>
                 </div>
                 <p className="footer-copy">MediVault &copy; 2026 &mdash; Secure Medical Records Platform</p>
-                <p className="footer-sub">Hackathon 2026 &middot; Built with care for patients everywhere</p>
+                <p className="footer-sub">Built with care for patients everywhere</p>
             </div>
         </footer>
     );
