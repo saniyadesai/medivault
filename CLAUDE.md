@@ -32,6 +32,12 @@ None of these survive a reboot on their own except Postgres (a brew service). Hi
 
 ## Dashboard redesign (in progress, TypeScript rebuild planned)
 
+> ⚠️ **This branch is a design sample, not a feature branch.** Only the Patient
+> dashboard's Overview tab has been rebuilt, and even there Health Vitals and
+> Upcoming Appointments are hardcoded sample data with no backend behind them.
+> Nothing here is production-ready or merged into `main`. See "Current build
+> status" below for the precise done/not-done line.
+
 The dashboard UI (`src/pages/dashboard/*.jsx`, `src/components/dashboard/*.jsx` — currently plain JS/JSX, table-and-nav-list style) is being redesigned from scratch. Work is happening **incrementally, piece by piece** — not as one big rewrite — per user preference.
 
 **Live mockup / design canvas:** https://claude.ai/artifact/Foowa1tdp3BCRe4Cy5sMeV

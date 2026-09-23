@@ -1,3 +1,4 @@
+// Design sample (dashboard-redesign-ts branch) — not merged into main. See CLAUDE.md.
 import { useState, type ReactNode } from 'react';
 import { useTheme } from '../theme/useTheme';
 import {
