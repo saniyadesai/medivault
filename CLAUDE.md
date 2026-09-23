@@ -20,6 +20,16 @@ Project notes and in-progress decisions for MediVault, kept here so context surv
 - Claude-in-Chrome extension has been unreliable here — headless Playwright Chromium works instead.
 - `.env` points `DATABASE_URL` / `VITE_API_BASE_URL` at localhost. The team previously used a Neon cloud DB the user doesn't control; local Postgres is preferred now.
 
+### After a machine restart, checklist before assuming anything is broken
+
+None of these survive a reboot on their own except Postgres (a brew service). Hit these in order before debugging further — a 2026-09-22 session lost real time chasing "summaries broken" / "unauthorized login" that were actually just these:
+
+1. **Docker Desktop** — not running by default (`open -a Docker`, wait for daemon), then `docker compose up -d` for MinIO. Check: `curl http://localhost:9000/minio/health/live` → `200`.
+2. **Ollama** — the app usually relaunches itself, but confirm: `curl http://localhost:11434` → `"Ollama is running"`. First request after a cold start can take 5-60s+ while the vision model (`qwen2.5vl:7b`, ~6GB) loads into memory — don't mistake that for it being down.
+3. **Local Postgres** — `brew services start postgresql@17` if not already running. **Check every migration in `db/migrations/` has actually been applied to the local `medivault` DB** — it's easy for a migration applied to production (Neon) to never get run locally, and the failure mode is ugly: e.g. migration 0010 (`patients.gender`) missing locally made every single login fail with a generic `column "gender" does not exist` that surfaced in the UI as "Unauthorized. Please log in." Compare columns directly rather than trusting a migrations-tracking table: `psql -d medivault -Atc "select column_name from information_schema.columns where table_name='patients'"`.
+4. **The API server itself** — if it was left running from a previous session (`node server/src/index.js` via `nohup`), kill and restart it (`lsof -ti:3001 -sTCP:LISTEN | xargs kill`) rather than trusting a days-old process — it can be holding dead connections to Docker/Ollama from before the restart, surfacing as `ECONNREFUSED` in `/tmp/medivault-api.log` even once those services are back up.
+5. Then Vite on **5177** as usual via `/run-medivault`.
+
 ## Dashboard redesign (in progress, TypeScript rebuild planned)
 
 The dashboard UI (`src/pages/dashboard/*.jsx`, `src/components/dashboard/*.jsx` — currently plain JS/JSX, table-and-nav-list style) is being redesigned from scratch. Work is happening **incrementally, piece by piece** — not as one big rewrite — per user preference.
@@ -55,7 +65,26 @@ Adopted: hover-reveal row actions (Notion/Linear-style — actions appear on row
 
 Declined: command palette (⌘K). The search bar still shows the `⌘K` hint visually but is **not** wired up — don't build it unless asked.
 
+### Current build status (branch: `dashboard-redesign-ts`)
+
+Work lives on the **`dashboard-redesign-ts`** git branch — never merged into `main`, and `main` must not be touched by this work (explicit user instruction from earlier in the project). To resume: `git checkout dashboard-redesign-ts`.
+
+New TypeScript dashboard code lives in **`src/dashboard-v2/`**:
+- `DashboardShell.tsx` — the new sidebar + topbar shell (search bar with inert ⌘K hint, theme toggle, notification bell, avatar).
+- `PatientOverview.tsx` — the new Overview tab content: metrics row (Documents/Pending Requests/Active Grants/Audit Events — real data), Health Vitals row (Heart Rate/Blood Pressure/Blood Glucose/Last Checkup — explicitly badged **"SAMPLE DATA"**, not wired to anything real yet), Upcoming Appointments (also **"SAMPLE DATA"**), Recent Documents, Recent Activity, Quick Actions, and an AI Assistant mini-widget (badged "RAG").
+- `AiAssistantCard.tsx`, `ToastStack.tsx` / `useToast.ts`, `icons.tsx` (hand-built icon set, not a library), `types.ts` (typed shapes for dashboard data).
+- Theme system in **`src/theme/`**: `theme.css` (token set) + `useTheme.ts` (light/dark toggle, ~150–200ms crossfade, `prefers-color-scheme` fallback).
+- `PatientDashboardPage.jsx` was renamed to `.tsx` and now composes `DashboardShell` + `PatientOverview` for the Overview tab.
+
+**What's done:** Overview tab for the Patient dashboard only — new shell, new Overview component, real data wired for everything except vitals/appointments (intentionally sample data for now), light/dark theme toggle confirmed working. Verified live via Playwright screenshots: `.claude/skills/run-medivault/shots/v2-1-overview-dark.png` and `v2-2-overview-light.png`.
+
+**What's still old:** every other Patient tab (Storage Vault, Access Requests, Audit Log, AI Chat, Settings, Notifications) still renders with the original `DashboardSection` / `DataTable` / `ActivityFeed` components and old `components/dashboard/dashboard.css`, just now nested inside the new `DashboardShell`. The Doctor and Hospital dashboards (`DoctorDashboardPage.jsx`, `HospitalDashboardPage.jsx`) are completely untouched — still the original design.
+
+**Earlier design exploration** (before the shell above was settled on) is preserved as screenshots in `.claude/skills/run-medivault/shots/`, not necessarily reflecting the final direction — sidebar layout options (`sidebar-A-*` collapsed/expanded, `sidebar-B-floating`, `sidebar-C-grouped`, `sidebar-D-bold-*`), button styling passes (`sidebar-buttons-fixed/hover`), and full-page palette/layout variants (`palette-sage`, `plum-final-light/dark`, `v3-1-light`, `v3-2-dark`). The amber/copper direction described above is what was ultimately chosen and built.
+
 ### Next steps
 
-- TypeScript rebuild of the dashboard: component structure, typed data shapes for `dashboardApi` / `vaultApi` service responses, wiring the new layout to real patient/doctor/hospital dashboard data (currently mocked in the design canvas).
-- Continue refining section by section as directed — confirm scope before large rewrites.
+- Rebuild remaining Patient tabs (Storage Vault first is the likely next target), then Doctor and Hospital dashboards, in the same incremental style.
+- Wire Health Vitals and Upcoming Appointments to real data once there's a real data source for them (currently no vitals/appointments backend exists at all — this is new scope, not just a frontend wiring task).
+- Component structure, typed data shapes for `dashboardApi` / `vaultApi` service responses, continuing to extend `dashboard-v2/types.ts` as more of the dashboard is ported.
+- Continue refining section by section as directed — confirm scope before large rewrites, and always confirm before merging any of this into `main`.
