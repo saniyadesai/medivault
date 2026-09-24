@@ -1066,3 +1066,300 @@
     transform: translateY(0);
   }
 }
+
+/* ---------- Toolbar (filters above a list) ---------- */
+.mv-toolbar {
+  display: flex;
+  align-items: flex-end;
+  gap: 12px;
+  flex-wrap: wrap;
+}
+
+.mv-field-inline {
+  display: flex;
+  flex-direction: column;
+  gap: 5px;
+}
+
+.mv-field-label {
+  font-size: 10.5px;
+  font-weight: 700;
+  letter-spacing: 0.3px;
+  text-transform: uppercase;
+  color: var(--mv-text-faint);
+}
+
+.mv-select,
+.mv-date-input {
+  background: var(--mv-surface-card);
+  border: 1px solid var(--mv-hairline);
+  border-radius: 8px;
+  padding: 7px 10px;
+  font: inherit;
+  font-size: 12.5px;
+  color: var(--mv-text);
+  min-width: 170px;
+}
+
+.mv-select:focus,
+.mv-date-input:focus {
+  outline: none;
+  border-color: var(--mv-hairline-strong);
+}
+
+.mv-toolbar-count {
+  margin-left: auto;
+  font-size: 11.5px;
+  color: var(--mv-text-faint);
+  padding-bottom: 8px;
+}
+
+/* ---------- Status pills (requests etc.) ---------- */
+.mv-status-pill {
+  margin-left: auto;
+  flex-shrink: 0;
+  font-size: 10.5px;
+  font-weight: 700;
+  padding: 4px 10px;
+  border-radius: 20px;
+  text-transform: capitalize;
+}
+
+.mv-status-pill.is-pending {
+  background: var(--mv-blue-soft);
+  color: var(--mv-blue);
+}
+
+.mv-status-pill.is-approved {
+  background: var(--mv-green-soft);
+  color: var(--mv-green);
+}
+
+.mv-status-pill.is-rejected {
+  background: var(--mv-hairline);
+  color: var(--mv-text-faint);
+}
+
+/* ---------- Toggle switch (notifications) ---------- */
+.mv-switch {
+  position: relative;
+  display: inline-flex;
+  align-items: center;
+  width: 38px;
+  height: 22px;
+  flex-shrink: 0;
+  border-radius: 999px;
+  border: 1px solid var(--mv-hairline);
+  background: var(--mv-surface-elevated);
+  cursor: pointer;
+  padding: 0;
+  transition: background-color 0.15s ease, border-color 0.15s ease;
+}
+
+.mv-switch.is-on {
+  background: var(--mv-accent);
+  border-color: var(--mv-accent);
+}
+
+.mv-switch-knob {
+  position: absolute;
+  top: 2px;
+  left: 2px;
+  width: 16px;
+  height: 16px;
+  border-radius: 50%;
+  background: #fff;
+  box-shadow: 0 1px 2px rgba(0, 0, 0, 0.15);
+  transition: transform 0.15s ease;
+}
+
+.mv-switch.is-on .mv-switch-knob {
+  transform: translateX(16px);
+}
+
+/* ---------- Form fields (settings) ---------- */
+.mv-form-grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 14px;
+}
+
+.mv-form-field {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.mv-form-field.span-2 {
+  grid-column: span 2;
+}
+
+.mv-form-label {
+  font-size: 11.5px;
+  font-weight: 600;
+  color: var(--mv-text-muted);
+}
+
+.mv-form-input {
+  background: var(--mv-surface-card);
+  border: 1px solid var(--mv-hairline);
+  border-radius: 8px;
+  padding: 9px 12px;
+  font: inherit;
+  font-size: 13px;
+  color: var(--mv-text);
+}
+
+.mv-form-input:focus {
+  outline: none;
+  border-color: var(--mv-hairline-strong);
+}
+
+/* ---------- Expandable sub-list (access request documents) ---------- */
+.mv-sublist {
+  margin: 0 18px 12px;
+  padding: 10px 12px;
+  background: var(--mv-surface-elevated);
+  border: 1px solid var(--mv-hairline);
+  border-radius: 8px;
+  font-size: 12px;
+  color: var(--mv-text-muted);
+}
+
+.mv-sublist-title {
+  font-weight: 700;
+  font-size: 10.5px;
+  text-transform: uppercase;
+  letter-spacing: 0.3px;
+  color: var(--mv-text-faint);
+  margin-bottom: 6px;
+}
+
+.mv-sublist ul {
+  margin: 0;
+  padding-left: 16px;
+}
+
+.mv-sublist li {
+  margin-bottom: 3px;
+}
+
+/* ---------- AI Chat tab (re-skins components/chat/ChatPanel.jsx's own
+   classnames — chat.css markup/behavior untouched, this just overrides
+   its visuals with mv-* tokens instead of the old marketing-site ones) ---------- */
+.mv-chat .chat-panel {
+  height: calc(100vh - 220px);
+  min-height: 420px;
+}
+
+.mv-chat .chat-sessions {
+  border-right-color: var(--mv-hairline);
+}
+
+.mv-chat .chat-new-btn {
+  background: var(--mv-accent);
+  color: var(--mv-on-accent);
+  border: none;
+  border-radius: 8px;
+  padding: 9px 14px;
+  font-weight: 700;
+  font-size: 12.5px;
+  cursor: pointer;
+}
+
+.mv-chat .chat-session-item {
+  color: var(--mv-text-muted);
+}
+
+.mv-chat .chat-session-item:hover {
+  background: var(--mv-surface-elevated);
+}
+
+.mv-chat .chat-session-item.is-active {
+  background: var(--mv-accent-soft);
+  color: var(--mv-accent-text);
+}
+
+.mv-chat .chat-session-delete {
+  color: var(--mv-text-faint);
+}
+
+.mv-chat .chat-session-delete:hover {
+  color: var(--mv-red);
+}
+
+.mv-chat .chat-error {
+  color: var(--mv-red);
+}
+
+.mv-chat .chat-intro {
+  color: var(--mv-text-faint);
+  font-size: 13px;
+}
+
+.mv-chat .chat-bubble-user {
+  background: var(--mv-surface-elevated);
+  border: 1px solid var(--mv-hairline);
+  border-radius: 12px 12px 2px 12px;
+  color: var(--mv-text-body);
+}
+
+.mv-chat .chat-bubble-assistant {
+  background: var(--mv-accent-soft);
+  border: 1px solid var(--mv-hairline);
+  border-radius: 12px 12px 12px 2px;
+  color: var(--mv-text);
+}
+
+.mv-chat .chat-cursor {
+  background: var(--mv-accent);
+}
+
+.mv-chat .chat-status-text {
+  color: var(--mv-text-faint);
+}
+
+.mv-chat .chat-status-dots span {
+  background: var(--mv-accent);
+}
+
+.mv-chat .chat-citation-badge {
+  background: var(--mv-surface-card);
+  border: 1px solid var(--mv-hairline);
+  color: var(--mv-text-muted);
+  border-radius: 20px;
+  padding: 3px 9px;
+}
+
+.mv-chat .chat-input-row {
+  border-top-color: var(--mv-hairline);
+}
+
+.mv-chat .chat-input {
+  border: 1px solid var(--mv-hairline);
+  border-radius: 10px;
+  background: var(--mv-surface-card);
+  color: var(--mv-text);
+  font-family: inherit;
+}
+
+.mv-chat .chat-input:focus {
+  border-color: var(--mv-hairline-strong);
+  box-shadow: none;
+}
+
+.mv-chat .chat-input-row .btn.btn-primary {
+  background: var(--mv-accent);
+  color: var(--mv-on-accent);
+  border: none;
+  border-radius: 8px;
+  padding: 9px 16px;
+  font-weight: 700;
+  font-size: 12.5px;
+  cursor: pointer;
+}
+
+.mv-chat .chat-input-row .btn.btn-primary:disabled {
+  opacity: 0.5;
+  cursor: default;
+}
