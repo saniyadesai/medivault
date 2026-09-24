@@ -18,6 +18,7 @@ import {
 } from '../../utils/authValidation';
 
 const BLOOD_GROUPS = ['A+', 'A-', 'B+', 'B-', 'AB+', 'AB-', 'O+', 'O-'];
+const GENDERS = ['Male', 'Female', 'Other', 'Prefer not to say'];
 const SPECIALIZATIONS = ['General Medicine', 'Cardiology', 'Neurology', 'Orthopedics', 'Pediatrics'];
 
 function getInitialForm(roleKey) {
@@ -27,6 +28,7 @@ function getInitialForm(roleKey) {
       email: '',
       dateOfBirth: '',
       bloodGroup: '',
+      gender: '',
       password: '',
       confirmPassword: '',
     };
@@ -84,6 +86,7 @@ export default function RoleRegisterPage({ roleKey }) {
       nextErrors.email = validateEmail(form.email);
       nextErrors.dateOfBirth = validateRequired(form.dateOfBirth, 'Date of birth');
       nextErrors.bloodGroup = validateRequired(form.bloodGroup, 'Blood group');
+      nextErrors.gender = validateRequired(form.gender, 'Gender');
     }
 
     if (role.key === 'doctor') {
@@ -166,6 +169,14 @@ export default function RoleRegisterPage({ roleKey }) {
                 onChange={onChange}
                 options={BLOOD_GROUPS}
                 error={fieldErrors.bloodGroup}
+              />
+              <AuthSelect
+                id="gender"
+                label="Gender"
+                value={form.gender}
+                onChange={onChange}
+                options={GENDERS}
+                error={fieldErrors.gender}
               />
             </>
           ) : null}
