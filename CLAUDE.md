@@ -45,20 +45,34 @@ The dashboard UI (`src/pages/dashboard/*.jsx`, `src/components/dashboard/*.jsx` 
 
 ### Chosen direction
 
-"Raycast interaction language × healthcare UX rules, amber/copper brand theme." Built from two references the user specifically liked:
-- **Raycast** (shadcn.io/design/raycast): zero drop shadows (depth via a 4-step surface ladder instead), hairline 1px borders, Inter font with the `ss03` stylistic set (single-story "g"), restrained/functional layout, one command-bar-style search element.
+"Raycast interaction language × healthcare UX rules." Built from two references the user specifically liked:
+- **Raycast** (shadcn.io/design/raycast): originally targeted zero drop shadows (depth via a surface ladder instead), hairline 1px borders, Inter font with the `ss03` stylistic set (single-story "g"), restrained/functional layout, one command-bar-style search element. **What actually got built deviates on depth** — see Color system below.
 - **Fuselab Creative's healthcare UX article**: red reserved strictly for genuine clinical emergencies — never routine status; green only for normal-range values; blue for trust/informational; tabular figures for vitals/numbers; AI answers should cite their source ("reasoning transparency").
 
 There is no well-known public healthcare dashboard that's both polished and interaction-rich, so the approach is: borrow interaction language from top SaaS products (Linear, Notion, Vercel, Sentry, Mercury/Ramp) and apply it to healthcare-specific content — not copy an existing health app.
 
 ### Color system
 
-Brand accent: **amber/copper**, chosen because the user wanted something "very unique" (not the obvious medical blue/green/indigo).
-- Core: `#E0902E`
-- Text-on-surface variants: `#A85D12` (light theme) / `#F4B25C` (dark theme)
-- Ink on filled accent surfaces: `#2B1806`
+> **Corrected 2026-09-23.** This section originally documented an amber/copper
+> accent (`#E0902E`) as chosen. That was true as of 2026-09-14, but color
+> exploration continued afterward (screenshots `palette-sage`, `v3-1/2`,
+> `plum-final-*` in `.claude/skills/run-medivault/shots/`, dated 2026-09-17
+> through 2026-09-19) and **plum/berry is what actually got built** into
+> `src/theme/theme.css` and shipped in the 2026-09-20 commit — amber never
+> made it into code. This doc just wasn't updated at the time to reflect that
+> pivot. Verified live via `run-medivault` on 2026-09-23: the running app is
+> plum/berry with soft card shadows, matching `plum-final-light/dark.png`
+> exactly, not the amber/flat-hairline description below that used to be here.
 
-Runs through sidebar active state, avatars, primary buttons, AI assistant accents, icon strokes, and hover states — in **both light and dark mode from one CSS-custom-property token set** swapped via a class (`.mv-dark` / `.mv-light`), not two separate builds. A `data-theme`-style token approach, `prefers-color-scheme` fallback, ~150–200ms crossfade on toggle.
+Brand accent: **plum/berry**.
+- Core accent: `#a8447f` (light theme) / `#d1689e` (dark theme)
+- Text-on-surface variant: `#742959` (light) / `#e6a0c4` (dark)
+- Ink on filled accent surfaces: `#ffffff` (light) / `#2b0f20` (dark)
+- Canvas has a faint plum tint (`#fbf3f8` light / `#1f0f1a` dark), not neutral gray/white.
+
+Depth uses **soft box-shadows** on cards (`--mv-shadow-card`, `--mv-shadow-toast` in `theme.css`), not the flat hairline-only depth Raycast was originally cited for — a deliberate-looking deviation from the reference, not documented as a conscious choice anywhere, so treat it as the current baseline unless the user says otherwise.
+
+Runs through sidebar active state, avatars, primary buttons, AI assistant accents, icon strokes, and hover states — in **both light and dark mode from one CSS-custom-property token set** (`[data-mv-theme='light']` / `[data-mv-theme='dark']` in `theme.css`), not two separate builds. `prefers-color-scheme` fallback exists; theme switch is instant (no crossfade — a deliberate change from an earlier ~150–200ms crossfade plan, see the comment in `theme.css`: animating that many nodes on toggle was expensive and looked glitchy).
 
 Status colors are kept semantically separate from the brand hue — this matters, don't blur it:
 - **Green** = normal/positive vitals only
@@ -79,14 +93,20 @@ New TypeScript dashboard code lives in **`src/dashboard-v2/`**:
 - `DashboardShell.tsx` — the new sidebar + topbar shell (search bar with inert ⌘K hint, theme toggle, notification bell, avatar).
 - `PatientOverview.tsx` — the new Overview tab content: metrics row (Documents/Pending Requests/Active Grants/Audit Events — real data), Health Vitals row (Heart Rate/Blood Pressure/Blood Glucose/Last Checkup — explicitly badged **"SAMPLE DATA"**, not wired to anything real yet), Upcoming Appointments (also **"SAMPLE DATA"**), Recent Documents, Recent Activity, Quick Actions, and an AI Assistant mini-widget (badged "RAG").
 - `AiAssistantCard.tsx`, `ToastStack.tsx` / `useToast.ts`, `icons.tsx` (hand-built icon set, not a library), `types.ts` (typed shapes for dashboard data).
-- Theme system in **`src/theme/`**: `theme.css` (token set) + `useTheme.ts` (light/dark toggle, ~150–200ms crossfade, `prefers-color-scheme` fallback).
+- Theme system in **`src/theme/`**: `theme.css` (token set) + `useTheme.ts` (light/dark toggle, `prefers-color-scheme` fallback; theme switch is instant, no crossfade — see Color system above).
 - `PatientDashboardPage.jsx` was renamed to `.tsx` and now composes `DashboardShell` + `PatientOverview` for the Overview tab.
 
-**What's done:** Overview tab for the Patient dashboard only — new shell, new Overview component, real data wired for everything except vitals/appointments (intentionally sample data for now), light/dark theme toggle confirmed working. Verified live via Playwright screenshots: `.claude/skills/run-medivault/shots/v2-1-overview-dark.png` and `v2-2-overview-light.png`.
+**What's done:** Overview tab for the Patient dashboard only — new shell, new Overview component, real data wired for everything except vitals/appointments (intentionally sample data for now), light/dark theme toggle confirmed working. Verified live via Playwright screenshots: `.claude/skills/run-medivault/shots/v2-1-overview-dark.png` and `v2-2-overview-light.png` (plum/berry — see Color system above; the "v2" filename predates the amber→plum doc correction, don't infer amber from it).
 
 **What's still old:** every other Patient tab (Storage Vault, Access Requests, Audit Log, AI Chat, Settings, Notifications) still renders with the original `DashboardSection` / `DataTable` / `ActivityFeed` components and old `components/dashboard/dashboard.css`, just now nested inside the new `DashboardShell`. The Doctor and Hospital dashboards (`DoctorDashboardPage.jsx`, `HospitalDashboardPage.jsx`) are completely untouched — still the original design.
 
-**Earlier design exploration** (before the shell above was settled on) is preserved as screenshots in `.claude/skills/run-medivault/shots/`, not necessarily reflecting the final direction — sidebar layout options (`sidebar-A-*` collapsed/expanded, `sidebar-B-floating`, `sidebar-C-grouped`, `sidebar-D-bold-*`), button styling passes (`sidebar-buttons-fixed/hover`), and full-page palette/layout variants (`palette-sage`, `plum-final-light/dark`, `v3-1-light`, `v3-2-dark`). The amber/copper direction described above is what was ultimately chosen and built.
+**Earlier design exploration** (before the shell above was settled on) is preserved as screenshots in `.claude/skills/run-medivault/shots/`: sidebar layout options (`sidebar-A-*` collapsed/expanded, `sidebar-B-floating`, `sidebar-C-grouped`, `sidebar-D-bold-*`), button styling passes (`sidebar-buttons-fixed/hover`), and full-page palette/layout variants (`palette-sage`, `plum-final-light/dark`, `v3-1-light`, `v3-2-dark`). **`plum-final-light/dark.png` is the closest match to what actually shipped** — see the Color system correction note above; despite the naming, "amber/copper" was never what got built.
+
+**Re-verified 2026-09-23** via `run-medivault`, both paths:
+- Mock-auth path (no backend): all three roles (patient/doctor/hospital) round-trip register → dashboard → logout → login cleanly. Patient Overview renders correctly; Patient Storage Vault confirmed still old-styled inside the new shell; Doctor/Hospital dashboards confirmed fully untouched. `npm run lint` shows only pre-existing, unrelated errors (`server/src/app.js`, `AISummaryModal.jsx`, `DoctorDashboardPage.jsx`, `EmergencyAccess.jsx`) — nothing new in `dashboard-v2/` or `theme/`.
+- Full-stack path: hit the post-restart checklist below (Docker/MinIO and the API were both down) — brought up Docker → MinIO → confirmed all 9 migrations applied (`patients.gender` present) → restarted the API → Vite. Real login against the local DB works once the full chain is actually up; an earlier "login not working" report in this session turned out to be a leftover mock-auth `.env.local` override from Playwright testing, not a DB problem.
+
+**User feedback, 2026-09-23:** the redesigned UX doesn't yet feel as good as it should, even in the parts already migrated (Overview tab) — user wants to walk through specific issues before any further tabs get migrated. Specifics pending; **do not proceed to redesign Storage Vault or any other tab until that discussion happens and scope is confirmed.**
 
 ### Next steps
 

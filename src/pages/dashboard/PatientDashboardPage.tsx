@@ -1,9 +1,9 @@
-import { useCallback, useEffect, useState, Fragment, type ChangeEvent } from 'react';
+import { useCallback, useEffect, useMemo, useState, Fragment, type ChangeEvent } from 'react';
 import { DashboardShell } from '../../dashboard-v2/DashboardShell';
 import { PatientOverview } from '../../dashboard-v2/PatientOverview';
 import { ToastStack } from '../../dashboard-v2/ToastStack';
 import { useToast } from '../../dashboard-v2/useToast';
-import type { PatientDashboardData, PatientView } from '../../dashboard-v2/types';
+import type { PatientDashboardData, PatientView, SearchResultItem } from '../../dashboard-v2/types';
 
 import DashboardSection from '../../components/dashboard/DashboardSection';
 import DataTable from '../../components/dashboard/DataTable';
@@ -186,6 +186,54 @@ export default function PatientDashboardPage() {
     setFeedback('');
     setActiveView(view);
   };
+
+  const searchItems: SearchResultItem[] = useMemo(() => {
+    if (!data) return [];
+    const items: SearchResultItem[] = [];
+
+    data.documents.forEach((doc) => {
+      items.push({
+        id: `doc-${doc.id}`,
+        category: 'Document',
+        label: doc.name,
+        meta: `${doc.type.replace(/_/g, ' ')} · ${doc.uploadedBy} · ${doc.date}`,
+        onSelect: () => handleView(doc.id),
+      });
+    });
+
+    data.accessRequests.forEach((req) => {
+      items.push({
+        id: `req-${req.id}`,
+        category: 'Access Request',
+        label: req.requester,
+        meta: `${req.role} · ${req.status}`,
+        onSelect: () => handleViewChange('requests'),
+      });
+    });
+
+    data.auditEvents.forEach((event) => {
+      items.push({
+        id: `audit-${event.id}`,
+        category: 'Audit Event',
+        label: event.title,
+        meta: event.time,
+        onSelect: () => handleViewChange('audit'),
+      });
+    });
+
+    data.notifications.forEach((entry) => {
+      items.push({
+        id: `notif-${entry.id}`,
+        category: 'Notification',
+        label: entry.channel,
+        meta: entry.description,
+        onSelect: () => handleViewChange('notifications'),
+      });
+    });
+
+    return items;
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [data]);
 
   const navItems = [
     { key: 'overview' as const, label: 'Overview', icon: <GridIcon size={16} /> },
@@ -392,9 +440,11 @@ export default function PatientDashboardPage() {
       title={topbarTitle}
       subtitle={topbarSubtitle}
       userName={userName}
+      userEmail={user?.email || ''}
       userInitials={userInitials || 'P'}
       onLogout={logout}
       onHome={() => { window.location.href = '/'; }}
+      searchItems={searchItems}
     >
       {renderView()}
       {viewerDoc && (

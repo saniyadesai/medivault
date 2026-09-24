@@ -71,6 +71,16 @@
   font-feature-settings: 'calt' 1, 'kern' 1, 'liga' 1, 'ss03' 1;
 }
 
+/* Light theme only — echoes the sidebar's radial-sheen + linear-gradient
+   treatment across the main canvas instead of a flat fill. Dark theme is
+   untouched (falls back to the plain --mv-canvas fill above); it was
+   already working well and wasn't asked for. */
+[data-mv-theme='light'].mv-root {
+  background:
+    radial-gradient(140% 90% at 0% 0%, rgba(168, 68, 127, 0.06), transparent 60%),
+    linear-gradient(165deg, #fdf7fb 0%, #fbf3f8 50%, #f5e6ef 100%);
+}
+
 /* No blanket transition on theme switch: animating background/border/color
    across every descendant (~150+ nodes on a populated dashboard) is
    expensive to composite — visible as a multi-second "washed out, then

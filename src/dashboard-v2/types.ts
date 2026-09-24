@@ -66,3 +66,11 @@ export interface NavItem {
   icon: import('react').ReactNode;
   badge?: string;
 }
+
+export interface SearchResultItem {
+  id: string;
+  category: string;
+  label: string;
+  meta: string;
+  onSelect: () => void;
+}
