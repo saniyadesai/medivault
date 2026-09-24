@@ -5,7 +5,7 @@ import multer from 'multer';
 import bcrypt from 'bcryptjs';
 import rateLimit from 'express-rate-limit';
 import { pool, withTransaction } from './db.js';
-import { issueToken, makeSafeUser, normalizeEmail, requireAuth, camelRow, camelRows } from './utils.js';
+import { issueToken, makeSafeUser, normalizeEmail, requireAuth, camelRow, camelRows, calculateAge } from './utils.js';
 import { uploadFile, downloadFile } from './storage.js';
 import { getPatientId, getDoctorId, getHospitalId, isAuthorizedForDocument } from './authz.js';
 import { encryptFile, decryptFile } from './crypto.js';
@@ -736,6 +736,7 @@ app.get('/api/patients/search', requireAuth, async (req, res) => {
         email: patient.email,
         bloodGroup: patient.blood_group,
         dateOfBirth: patient.date_of_birth,
+        age: calculateAge(patient.date_of_birth),
         gender: patient.gender,
       },
       documents: camelRows(docs.rows),
@@ -941,6 +942,7 @@ app.post('/api/emergency-access/initiate', requireAuth, async (req, res) => {
     const patient = {
       name: pt.full_name,
       dob: pt.date_of_birth ? new Date(pt.date_of_birth).toLocaleDateString('en-IN', { day: '2-digit', month: 'short', year: 'numeric' }) : null,
+      age: calculateAge(pt.date_of_birth),
       gender: pt.gender,
       bloodGroup: pt.blood_group,
       allergies: parseList(pt.allergies),
