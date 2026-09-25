@@ -61,7 +61,7 @@ export function AccessRequests({ requests, busy, onApprove, onReject }: AccessRe
                 <span className={`mv-status-pill is-${req.status}`}>{req.status}</span>
 
                 {req.status === 'pending' && (
-                  <div className="mv-reveal" style={{ display: 'flex', gap: 6, marginLeft: 10 }}>
+                  <div style={{ display: 'flex', gap: 6, marginLeft: 10 }}>
                     <button type="button" className="mv-btn mv-btn-ghost mv-btn-sm" disabled={busy} onClick={() => onReject(req.id)}>
                       Reject
                     </button>
