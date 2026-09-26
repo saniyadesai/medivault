@@ -1,6 +1,6 @@
 # CLAUDE.md
 
-Project notes and in-progress decisions for MediVault, kept here so context survives across sessions.
+Project notes and in-progress decisions for MediVault, kept here so context survives across sessions. For the stable "what is this project" overview (features, full tech stack, setup, deployment, architecture) see `README.md` — this file is the working log: environment quirks, design decisions and their history, and exactly what's done vs. not on the in-progress branch.
 
 ## Stack
 
@@ -111,6 +111,12 @@ Verified end-to-end against the real backend on 2026-09-24: registered a fresh p
 - No way to reach account actions from the topbar → added the profile dropdown.
 - Search was inert (⌘K hint went nowhere) → made functional, scoped to client-side filtering over already-loaded dashboard data (no new backend endpoint).
 - Sidebar's gradient look asked about for the main canvas too, light theme only, confirmed not to touch dark theme (user explicitly said dark "looks really good" as-is) → added, scoped via `[data-mv-theme='light']`.
+
+**Follow-up fixes, 2026-09-25/26** (found via user testing after the full-tab migration above):
+- Access Requests: Approve/Reject on a pending request were wrapped in the hover-reveal class — invisible until hovered. These are consequential actions, not decorative ones; made always visible (`AccessRequests.tsx`).
+- Storage Vault: the type `<select>` and date `<input>` filters rendered at different heights despite identical CSS (native `type="date"` carries its own calendar-icon chrome `<select>` doesn't) — normalized both to an explicit `height`/`box-sizing`, replaced the select's native arrow with a custom one.
+- **Type/component scale-up**: user compared against the old design (bold Poppins headings up to 36-48px) and found the new dashboard "everything looks so much smaller." Root cause wasn't the font (Inter isn't smaller-reading than Poppins) — the new design never stepped up to a true heading size anywhere; topbar title and card titles both sat in body-text range (13-15px). Fixed in two passes: (1) topbar title 15px→20px/700, card titles 13.5px→15.5px/700; (2) user asked for components generally bigger too, so did a coordinated increase across stat tiles (value 23px→28px), card/row padding, row text, buttons, nav items, avatars, icon buttons, search bar, and all form controls (select/date/text inputs unified to 38px height), plus sidebar width 250px→264px to match. Verified in both themes, no layout breakage.
+- Sidebar "MediVault" logo was inert decoration — wrapped it in a button using the existing `onHome` handler so it navigates to `/` like the sidebar's "Home" link already does.
 
 ### Next steps
 

@@ -10,24 +10,9 @@
 [![MinIO](https://img.shields.io/badge/MinIO_(S3)-C72E49?style=for-the-badge&logo=minio&logoColor=white)](https://min.io/)
 [![Ollama](https://img.shields.io/badge/Ollama-000000?style=for-the-badge&logo=ollama&logoColor=white)](https://ollama.com/)
 
-🥈 **2nd Place — Udhbhav 2k26** 🏆
+Maintained by [@moh0405](https://github.com/moh0405)
 
 </div>
-
----
-
-## 👥 Built By
-
-> 🥈 **2nd Place — Udhbhav 2k26**
-
-| Name | GitHub |
-|------|--------|
-| Aharon Kosetti | [@aharon-kumar-kosetti](https://github.com/aharon-kumar-kosetti) |
-| Bhanu Prakash Yirri | [@bhanuprakashyirri](https://github.com/bhanuprakashyirri) |
-| Mohith Kumar Baggu | [@mohithkumar64](https://github.com/mohithkumar64) |
-| Abishai Jogi | [@abishai-jogi](https://github.com/abishai-jogi) |
-| Saketh | [@venkata-saketh-reddy](https://github.com/venkata-saketh-reddy) |
-| Ram Sai | [@ramsaik3339-cloud](https://github.com/ramsaik3339-cloud) | 
 
 ---
 
@@ -43,12 +28,12 @@ Healthcare data is **fragmented**, **inaccessible**, and **out of the patient's 
 
 ## 💡 What is MediVault?
 
-MediVault is a **secure, role-based medical records platform** that puts patients in full control of their health data. Patients own their records. Doctors request access. Hospitals stay accountable. AI makes it all understandable.
+MediVault is a **secure, role-based medical records platform** that puts patients in full control of their health data. Patients own their records. Doctors request access. Hospitals stay accountable. AI makes it all understandable — and can answer questions about it, citing its sources.
 
 - 🔐 **Patient-owned encrypted records**
 - ✅ **Explicit, auditable consent flows**
 - 🚨 **Emergency break-glass access with guardrails**
-- 🤖 **AI-powered report summaries**
+- 🤖 **AI-powered report summaries and retrieval-augmented chat**
 
 ---
 
@@ -58,9 +43,12 @@ MediVault is a **secure, role-based medical records platform** that puts patient
 |--------|-------------|
 | 🧑‍⚕️ **Role-Based Dashboards** | Separate, purpose-built flows for Patients, Doctors, and Hospitals |
 | 🗄️ **Secure Document Vault** | Encrypted upload/download with strict role-based authorization |
-| 🤝 **Consent & Access Governance** | Request, approve, reject, grant, revoke — full lifecycle control |
-| 🚨 **Emergency Access Workflow** | 24-hour break-glass access with full audit trail |
+| 🤝 **Consent & Access Governance** | Request, approve, reject, grant, revoke — full lifecycle control, with a full audit trail |
+| 🚨 **Emergency Access Workflow** | Time-boxed break-glass access for treating clinicians, fully audited |
 | 🤖 **AI Medical Summarization** | Structured summaries of uploaded records from a local vision model (Ollama) or any OpenAI-compatible API |
+| 💬 **AI Chat with RAG** | Ask natural-language questions about your own accessible documents; answers are grounded in retrieved excerpts (pgvector) and cite the source document, not freeform generation |
+| 💊 **Drug Interaction Checker** | Cross-checks a patient's current medications against known interaction pairs |
+| 📜 **Full Audit Log** | Every access, grant, revoke, upload, and AI action is logged per patient |
 
 ---
 
@@ -69,7 +57,8 @@ MediVault is a **secure, role-based medical records platform** that puts patient
 ### Frontend
 - ⚛️ React 19 + React Router 7
 - ⚡ Vite 7
-- 🎨 Custom CSS (landing, auth, dashboards)
+- 🎨 Custom CSS (landing, auth, dashboards) — no Tailwind or component library
+- 🧪 The Patient dashboard is mid-migration to a new TypeScript design system (`src/dashboard-v2/`) on the `dashboard-redesign-ts` branch; `main` still ships the original JS/JSX dashboards. See **Project Status** below.
 
 ### Backend
 - 🟢 Node.js + Express 5
@@ -77,11 +66,12 @@ MediVault is a **secure, role-based medical records platform** that puts patient
 - 🛡️ Rate limiting, CORS controls, bcrypt password hashing
 
 ### Data & Storage
-- 🐘 PostgreSQL (`pg`, plain SQL migrations in `db/migrations/`)
+- 🐘 PostgreSQL (`pg`, plain SQL migrations in `db/migrations/`) with the `pgvector` extension for embeddings
 - 🪣 S3-compatible object storage for encrypted document blobs (MinIO in Docker locally)
 
 ### AI
-- 🤖 Any OpenAI-compatible chat API. Default: local Ollama `qwen2.5vl:7b` (free). OpenRouter/GPT-4o still works via env vars.
+- 🤖 **Summarization/chat completions**: any OpenAI-compatible chat API. Default: local Ollama `qwen2.5vl:7b` (free, vision-capable — reads the document image directly). OpenRouter/GPT-4o or Gemini work via env vars.
+- 🔎 **Embeddings (for Chat/RAG)**: a separate OpenAI-compatible `/embeddings` endpoint (`EMBEDDING_BASE_URL`/`EMBEDDING_MODEL`) — the chat-completions endpoint above doesn't necessarily also embed. Documents are chunked, embedded, and stored in `document_chunks` (pgvector); chat retrieves the top-k relevant chunks before answering.
 
 ### Tooling
 - ESLint 9 · Concurrently · dotenv
@@ -93,16 +83,16 @@ MediVault is a **secure, role-based medical records platform** that puts patient
 ### Prerequisites
 - Node.js (LTS)
 - npm
-- PostgreSQL database
+- PostgreSQL database with the `pgvector` extension available
 - Docker Desktop (runs MinIO for file storage)
-- [Ollama](https://ollama.com/) (optional, for free local AI summaries)
+- [Ollama](https://ollama.com/) (optional, for free local AI summaries/chat)
 
 ### Installation
 
 ```bash
 # 1. Clone the repo
-git clone https://github.com/aharon-kumar-kosetti/medivault-react.git
-cd medivault-react
+git clone https://github.com/saniyadesai/medivault.git
+cd medivault
 
 # 2. Install dependencies
 npm install
@@ -138,6 +128,16 @@ AI_BASE_URL=http://localhost:11434/v1
 AI_MODEL=qwen2.5vl:7b
 AI_API_KEY=
 AI_TIMEOUT_MS=300000
+
+# Chat + RAG embeddings — needs its own embedding-capable endpoint.
+# AI_BASE_URL above is chat-completions only and doesn't necessarily also embed.
+EMBEDDING_BASE_URL=https://generativelanguage.googleapis.com/v1beta/openai
+EMBEDDING_MODEL=gemini-embedding-001
+EMBEDDING_API_KEY=
+EMBEDDING_DIMENSIONS=768
+RAG_TOP_K=5
+RAG_CHUNK_SIZE=1200
+RAG_CHUNK_OVERLAP=200
 ```
 
 ### Local Services (Docker + Ollama)
@@ -155,18 +155,24 @@ To use OpenRouter instead of Ollama set `AI_BASE_URL=https://openrouter.ai/api/v
 ### Database Setup
 
 ```bash
-# Create the database and apply the SQL migrations in order (PostgreSQL 14+)
+# pgvector must be enabled BEFORE migration 0009 runs (it creates a vector column)
+# brew install pgvector   # if using Homebrew Postgres and it's not already available
 createdb medivault
+psql -d medivault -c "CREATE EXTENSION IF NOT EXISTS vector;"
+
+# Apply the SQL migrations in order (PostgreSQL 14+)
 for f in db/migrations/*.sql; do psql -v ON_ERROR_STOP=1 -d medivault -f "$f" || break; done
 ```
+
+As of this writing there are 10 migration files, through `0010_patient_gender.sql`. Always apply every file in order — a database built from an earlier subset will 500 on requests that touch newer columns/tables rather than failing loudly at startup.
 
 ### Run the App
 
 ```bash
-# Full stack (recommended)
+# Full stack (recommended) — frontend on :5177, API on :3001
 npm run dev:all
 
-# Frontend only
+# Frontend only (mock auth, no backend needed — set VITE_ENABLE_MOCK_AUTH=true)
 npm run dev
 
 # Backend only
@@ -183,15 +189,16 @@ Vercel runs the React build as static files and the Express app as one serverles
 
 | Need | Recommended | Also works |
 |---|---|---|
-| PostgreSQL | [Neon](https://neon.tech) (free tier; also available as the Vercel Postgres integration) | Supabase, Railway, RDS |
+| PostgreSQL (with pgvector) | [Neon](https://neon.tech) (free tier; also available as the Vercel Postgres integration; supports the `vector` extension) | Supabase, Railway, RDS |
 | S3-compatible bucket | [Cloudflare R2](https://developers.cloudflare.com/r2/) (10 GB free, no egress fees) | AWS S3, Backblaze B2, Supabase Storage |
 | Vision-capable model | [Google AI Studio](https://aistudio.google.com) Gemini API, free tier, OpenAI-compatible endpoint | Groq (free tier), OpenRouter (paid) |
+| Embeddings model | Google AI Studio `gemini-embedding-001` via the same OpenAI-compatible endpoint | Any OpenAI-compatible `/embeddings` endpoint |
 
 **1. Create the services**
 
-- Neon: create a project, copy the connection string (it ends in `?sslmode=require`).
+- Neon: create a project, copy the connection string (it ends in `?sslmode=require`), then run `CREATE EXTENSION IF NOT EXISTS vector;` against it once (Neon supports pgvector natively).
 - R2: create a bucket named `medivault-documents`, then *Manage R2 API Tokens → Create API token* with Object Read & Write on that bucket. Note the Access Key ID, Secret Access Key, and the S3 endpoint `https://<account-id>.r2.cloudflarestorage.com`.
-- Gemini: create an API key in AI Studio.
+- Gemini: create an API key in AI Studio (used for both chat completions and embeddings).
 
 **2. Apply the migrations to the hosted database** (from your machine, once per new database):
 
@@ -214,9 +221,13 @@ The runner records applied files in `schema_migrations`, so re-running is safe. 
 | `S3_BUCKET` | `medivault-documents` |
 | `S3_REGION` | `auto` for R2 (`us-east-1` etc. for AWS) |
 | `AI_BASE_URL` | `https://generativelanguage.googleapis.com/v1beta/openai` |
-| `AI_MODEL` | `gemini-3.6-flash` (`gemini-2.0-flash` and `gemini-2.5-flash` are retired for new accounts; list the models your key can use with `curl "https://generativelanguage.googleapis.com/v1beta/models?key=$AI_API_KEY"`) |
+| `AI_MODEL` | `gemini-3.6-flash` (list the models your key can use with `curl "https://generativelanguage.googleapis.com/v1beta/models?key=$AI_API_KEY"` — Gemini periodically retires older model names) |
 | `AI_API_KEY` | Gemini API key |
 | `AI_TIMEOUT_MS` | `50000` (must stay under the function's 60 s `maxDuration` in `vercel.json`) |
+| `EMBEDDING_BASE_URL` | `https://generativelanguage.googleapis.com/v1beta/openai` |
+| `EMBEDDING_MODEL` | `gemini-embedding-001` |
+| `EMBEDDING_API_KEY` | Same Gemini key, or a separate one |
+| `EMBEDDING_DIMENSIONS` | `768` |
 | `ALLOWED_ORIGINS` | your production URL, e.g. `https://medivault.vercel.app` |
 | `NODE_ENV` | `production` |
 
@@ -238,21 +249,31 @@ Operational notes:
 > See full architecture diagram: [`public/docs/MediVault-Architecture.pdf`](public/docs/MediVault-Architecture.pdf)
 
 ```
-┌─────────────────────────────────────────────┐
-│               React Frontend                │
-│     Patient · Doctor · Hospital Dashboards  │
-└──────────────────┬──────────────────────────┘
+┌───────────────────────────────────────────────┐
+│                React Frontend                  │
+│      Patient · Doctor · Hospital Dashboards    │
+└──────────────────┬──────────────────────────────┘
                    │ HMAC Bearer Token Auth
-┌──────────────────▼──────────────────────────┐
-│           Express API (Node.js)             │
-│   Auth · Records · Consent · Emergency · AI │
-└──────┬───────────┬──────────────┬───────────┘
-       │           │              │
-  ┌────▼────┐ ┌────▼─────┐ ┌─────▼──────┐
-  │PostgreSQL│ │ MinIO/S3 │ │ Ollama  AI │
-  │  (Data) │ │(Documents│ │ (Summaries)│
-  └─────────┘ └──────────┘ └────────────┘
+┌──────────────────▼──────────────────────────────┐
+│             Express API (Node.js)               │
+│  Auth · Records · Consent · Emergency · Chat    │
+└──────┬───────────┬──────────────┬───────────┬────┘
+       │           │              │           │
+  ┌────▼────┐ ┌────▼─────┐ ┌─────▼──────┐ ┌──▼──────────┐
+  │PostgreSQL│ │ MinIO/S3 │ │ Ollama /   │ │ Embeddings +│
+  │ +pgvector│ │(Documents│ │ OpenAI-    │ │ pgvector    │
+  │  (Data)  │ │  Blobs)  │ │ compatible │ │ RAG search  │
+  │          │ │          │ │ (Summaries)│ │ (Chat)      │
+  └──────────┘ └──────────┘ └────────────┘ └─────────────┘
 ```
+
+---
+
+## 🧭 Project Status
+
+`main` ships the original JS/JSX dashboards described above and is the stable, deployable branch.
+
+A ground-up **TypeScript redesign of the Patient dashboard** (new visual language, new component structure under `src/dashboard-v2/`) is in progress on the `dashboard-redesign-ts` branch — not merged into `main`. As of this writing, every Patient-facing tab (Overview, Storage Vault, Access Requests, Audit Log, Notifications, Settings, AI Chat) has been migrated; the Doctor and Hospital dashboards are still on the original design. See `CLAUDE.md` for the detailed, current state of that work, the design decisions behind it, and this machine's local dev setup notes.
 
 ---
 
@@ -263,6 +284,7 @@ Operational notes:
 - [ ] **Legacy path cleanup** — Retire compatibility branches post-migration
 - [ ] **Mobile app** — React Native patient portal
 - [ ] **HL7 FHIR integration** — Interoperability with hospital systems
+- [ ] **Doctor/Hospital dashboard redesign** — Extend the `dashboard-v2` design system past Patient once it's fully settled
 
 ---
 
