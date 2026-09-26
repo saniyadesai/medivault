@@ -118,8 +118,10 @@ export function DashboardShell({
         <aside className={`mv-sidebar${collapsed ? ' is-collapsed' : ''}`}>
           <div className="mv-sidebar-top">
             <div className="mv-brand">
-              {!collapsed && <img src="/MEDIVAULT BG REMOVER.png" alt="MediVault" />}
-              {!collapsed && <span>MediVault</span>}
+              <button type="button" className="mv-brand-link" onClick={onHome} aria-label="Go to homepage">
+                {!collapsed && <img src="/MEDIVAULT BG REMOVER.png" alt="MediVault" />}
+                {!collapsed && <span>MediVault</span>}
+              </button>
               <button
                 type="button"
                 className="mv-collapse-btn"
