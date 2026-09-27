@@ -218,13 +218,18 @@ export function PatientOverview({ data, onNavigate, onViewDocument, showToast }:
                 <div className="mv-empty">No activity yet.</div>
               ) : (
                 recentActivity.map((event) => (
-                  <div key={event.id} className="mv-row is-align-start">
+                  <button
+                    key={event.id}
+                    type="button"
+                    className="mv-row is-align-start is-clickable"
+                    onClick={() => onNavigate('audit')}
+                  >
                     <span className="mv-unread-dot" style={{ background: 'var(--mv-blue)' }} />
                     <div style={{ minWidth: 0 }}>
                       <div className="mv-row-title" style={{ fontWeight: 500, fontSize: 12 }}>{event.title}</div>
                       <div className="mv-row-meta mv-tabular">{event.time}</div>
                     </div>
-                  </div>
+                  </button>
                 ))
               )}
             </div>

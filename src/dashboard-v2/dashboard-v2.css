@@ -287,12 +287,19 @@
 .mv-profile-trigger {
   display: flex;
   align-items: center;
-  gap: 5px;
-  border: none;
-  background: transparent;
-  padding: 0;
+  gap: 6px;
+  border: 1px solid var(--mv-hairline);
+  background: var(--mv-surface-card);
+  border-radius: 999px;
+  padding: 3px 10px 3px 3px;
   cursor: pointer;
   color: var(--mv-text-faint);
+  transition: background-color 0.15s ease, border-color 0.15s ease;
+}
+
+.mv-profile-trigger:hover {
+  background: var(--mv-surface-elevated);
+  border-color: var(--mv-hairline-strong);
 }
 
 .mv-profile-dropdown {
@@ -770,7 +777,22 @@
   align-items: center;
   gap: 13px;
   padding: 15px 20px;
+  border: none;
   border-bottom: 1px solid var(--mv-hairline);
+  width: 100%;
+  text-align: left;
+  font-family: inherit;
+  color: inherit;
+  background: none;
+}
+
+.mv-row.is-clickable {
+  cursor: pointer;
+  transition: background-color 0.15s ease;
+}
+
+.mv-row.is-clickable:hover {
+  background: var(--mv-surface-elevated);
 }
 
 .mv-row:last-child {

@@ -234,10 +234,15 @@ export function DashboardShell({
               <button type="button" className="mv-icon-btn" onClick={toggleTheme} aria-label="Toggle theme">
                 {theme === 'dark' ? <MoonIcon size={16} /> : <SunIcon size={16} />}
               </button>
-              <div className="mv-icon-btn" style={{ cursor: 'default' }}>
+              <button
+                type="button"
+                className="mv-icon-btn"
+                onClick={() => onViewChange('notifications')}
+                aria-label="Notifications"
+              >
                 <BellIcon size={16} />
                 <span className="mv-dot" />
-              </div>
+              </button>
 
               <div className="mv-profile-menu" ref={profile.ref}>
                 <button
