@@ -532,7 +532,24 @@ ul {
    FEATURES SECTION
    ===================================================== */
 .features-section {
-  background: var(--off-white);
+  /* Plum brand, scoped to .features-section only — same section-by-section
+     approach as .navbar/.hero. .section-header/.section-tag are shared with
+     FlowSection, so overridden here as descendants, not the bare classes. */
+  background: #fdf7fb;
+}
+
+.features-section .section-tag {
+  color: #a8447f;
+  background: rgba(168, 68, 127, 0.08);
+  border-color: rgba(168, 68, 127, 0.2);
+}
+
+.features-section .section-header h2 {
+  color: #2b0f20;
+}
+
+.features-section .section-header p {
+  color: #7a4560;
 }
 
 .features-grid {
@@ -545,8 +562,8 @@ ul {
   background: var(--white);
   border-radius: var(--radius);
   padding: 30px;
-  box-shadow: var(--shadow-card);
-  border: 1px solid var(--border);
+  box-shadow: 0 2px 16px rgba(168, 68, 127, 0.07);
+  border: 1px solid #f0d9e8;
   transition: transform 0.3s ease, box-shadow 0.3s ease;
   opacity: 0;
   transform: translateY(20px);
@@ -559,7 +576,7 @@ ul {
 
 .feature-card:hover {
   transform: translateY(-6px);
-  box-shadow: var(--shadow-lg);
+  box-shadow: 0 12px 40px rgba(168, 68, 127, 0.16);
 }
 
 .fc-icon {
@@ -577,14 +594,16 @@ ul {
   height: 26px;
 }
 
-.fc-blue {
-  background: rgba(0, 119, 182, 0.1);
-  color: var(--bright-teal);
-}
-
-.fc-teal {
-  background: rgba(0, 180, 216, 0.1);
-  color: var(--turquoise-surf);
+/* fc-blue/fc-teal/fc-purple previously gave each card a different
+   "decorative" hue with no real meaning. Unified to the plum brand accent,
+   matching the dashboard's own rule that color should carry meaning, not
+   decorate — fc-red is the deliberate exception, kept for Emergency Access
+   Protocol, the one card that's genuinely about a clinical emergency. */
+.fc-blue,
+.fc-teal,
+.fc-purple {
+  background: rgba(168, 68, 127, 0.1);
+  color: #a8447f;
 }
 
 .fc-red {
@@ -592,22 +611,17 @@ ul {
   color: #dc2626;
 }
 
-.fc-purple {
-  background: rgba(139, 92, 246, 0.1);
-  color: #7c3aed;
-}
-
 .feature-card h3 {
   font-family: var(--font-heading);
   font-size: 18px;
   font-weight: 600;
-  color: var(--deep-twilight);
+  color: #2b0f20;
   margin-bottom: 10px;
 }
 
 .feature-card p {
   font-size: 14px;
-  color: var(--muted-text);
+  color: #7a4560;
   line-height: 1.75;
 }
 
