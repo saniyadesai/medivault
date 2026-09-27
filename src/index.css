@@ -649,7 +649,23 @@ ul {
    USER FLOW SECTION
    ===================================================== */
 .flow-section {
-  background: var(--light-cyan);
+  /* Plum brand, scoped to .flow-section — same section-by-section approach
+     as .navbar/.hero/.features-section. */
+  background: #fdf7fb;
+}
+
+.flow-section .section-tag {
+  color: #a8447f;
+  background: rgba(168, 68, 127, 0.08);
+  border-color: rgba(168, 68, 127, 0.2);
+}
+
+.flow-section .section-header h2 {
+  color: #2b0f20;
+}
+
+.flow-section .section-header p {
+  color: #7a4560;
 }
 
 .flow-tabs {
@@ -669,9 +685,9 @@ ul {
   font-size: 15px;
   font-weight: 600;
   cursor: pointer;
-  border: 2px solid var(--bright-teal);
+  border: 2px solid #a8447f;
   background: transparent;
-  color: var(--bright-teal);
+  color: #a8447f;
   font-family: var(--font-body);
   transition: all 0.25s ease;
 }
@@ -682,11 +698,11 @@ ul {
 }
 
 .flow-tab:hover {
-  background: rgba(0, 119, 182, 0.08);
+  background: rgba(168, 68, 127, 0.08);
 }
 
 .flow-tab.active {
-  background: var(--bright-teal);
+  background: #a8447f;
   color: var(--white);
 }
 
@@ -734,8 +750,8 @@ ul {
   width: 48px;
   height: 48px;
   border-radius: 50%;
-  background: rgba(0, 119, 182, 0.15);
-  color: rgba(0, 119, 182, 0.45);
+  background: rgba(168, 68, 127, 0.15);
+  color: rgba(168, 68, 127, 0.55);
   font-weight: 700;
   font-size: 16px;
   display: flex;
@@ -743,27 +759,27 @@ ul {
   justify-content: center;
   z-index: 1;
   flex-shrink: 0;
-  border: 2px solid rgba(0, 119, 182, 0.2);
+  border: 2px solid rgba(168, 68, 127, 0.2);
   transition: all 0.4s cubic-bezier(0.4, 0, 0.2, 1);
 }
 
 /* Active step bubble — solid gradient matching "Get Started" button */
 .step-bubble.step-active {
-  background: var(--bright-teal);
+  background: #a8447f;
   color: var(--white);
-  border-color: var(--turquoise-surf);
+  border-color: #d1689e;
   box-shadow:
-    0 0 0 5px rgba(0, 119, 182, 0.15),
-    0 6px 20px rgba(0, 119, 182, 0.4);
+    0 0 0 5px rgba(168, 68, 127, 0.15),
+    0 6px 20px rgba(168, 68, 127, 0.4);
   transform: scale(1.2);
 }
 
 /* Hover effect on any step bubble */
 .flow-step:hover .step-bubble {
-  background: var(--turquoise-surf);
+  background: #d1689e;
   color: var(--white);
-  border-color: var(--turquoise-surf);
-  box-shadow: 0 0 0 4px rgba(0, 180, 216, 0.2), 0 4px 14px rgba(0, 180, 216, 0.35);
+  border-color: #d1689e;
+  box-shadow: 0 0 0 4px rgba(209, 104, 158, 0.2), 0 4px 14px rgba(209, 104, 158, 0.35);
   transform: scale(1.1) translateY(-2px);
 }
 
@@ -794,7 +810,7 @@ ul {
   left: calc(50% + 24px);
   right: calc(-50% + 24px);
   height: 3px;
-  background: linear-gradient(90deg, var(--bright-teal), var(--turquoise-surf));
+  background: linear-gradient(90deg, #a8447f, #d1689e);
   opacity: 0.3;
 }
 
@@ -818,14 +834,14 @@ ul {
   font-family: var(--font-heading);
   font-size: 14px;
   font-weight: 600;
-  color: var(--deep-twilight);
+  color: #2b0f20;
   margin-bottom: 6px;
   line-height: 1.3;
 }
 
 .step-body p {
   font-size: 12px;
-  color: var(--muted-text);
+  color: #7a4560;
   line-height: 1.65;
 }
 
