@@ -1551,6 +1551,20 @@
   border-color: var(--mv-hairline-strong);
 }
 
+.mv-root .aisummary-parse-warning {
+  display: flex;
+  align-items: flex-start;
+  gap: 8px;
+  background: var(--mv-blue-soft);
+  border: 1px solid var(--mv-hairline-strong);
+  color: var(--mv-blue);
+  border-radius: 8px;
+  padding: 10px 12px;
+  margin-bottom: 14px;
+  font-size: 13px;
+  line-height: 1.5;
+}
+
 .mv-root .aisummary-alert-row {
   color: var(--mv-blue);
 }

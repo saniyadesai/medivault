@@ -57,6 +57,30 @@ export async function callAIChatCompletion({ url, headers, buildBody, primaryMod
 }
 
 /**
+ * Turns a raw fetch()/AI-call failure into a message safe to show a user —
+ * "fetch failed" / "ECONNREFUSED" mean nothing to someone who didn't set up
+ * the AI provider, and previously surfaced verbatim (e.g. Ollama not running).
+ * The original error is left for the caller to console.error separately;
+ * this only shapes what reaches the client.
+ */
+export function describeAiFailure(err) {
+  if (err?.name === 'AbortError') {
+    return {
+      status: 504,
+      message: 'The AI service took too long to respond. If it just started up, the model may still be loading into memory — please try again in a moment.',
+    };
+  }
+  const causeCode = err?.cause?.code || err?.code;
+  if (causeCode === 'ECONNREFUSED' || causeCode === 'ENOTFOUND' || err?.message === 'fetch failed') {
+    return {
+      status: 503,
+      message: "Can't reach the AI service right now. Make sure it's running (e.g. Ollama, or whatever AI_BASE_URL points to) and try again.",
+    };
+  }
+  return { status: 503, message: 'The AI service ran into a problem. Please try again in a moment.' };
+}
+
+/**
  * Age in whole years as of today, from a date_of_birth column value.
  * Doctors read age directly, not a raw DOB they have to do math on — this
  * is what actually surfaces the "age" a doctor asked for, not just storing

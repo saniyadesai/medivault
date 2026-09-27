@@ -5,7 +5,7 @@ import multer from 'multer';
 import bcrypt from 'bcryptjs';
 import rateLimit from 'express-rate-limit';
 import { pool, withTransaction } from './db.js';
-import { issueToken, makeSafeUser, normalizeEmail, requireAuth, camelRow, camelRows, calculateAge, callAIChatCompletion } from './utils.js';
+import { issueToken, makeSafeUser, normalizeEmail, requireAuth, camelRow, camelRows, calculateAge, callAIChatCompletion, describeAiFailure } from './utils.js';
 import { uploadFile, downloadFile } from './storage.js';
 import { getPatientId, getDoctorId, getHospitalId, isAuthorizedForDocument } from './authz.js';
 import { encryptFile, decryptFile } from './crypto.js';
@@ -1113,13 +1113,8 @@ RULES:
         causeMsg: fetchErr.cause?.message,
       });
 
-      if (fetchErr.name === 'AbortError' || fetchErr.code === 'UND_ERR_CONNECT_TIMEOUT') {
-        console.error('⚠️ TIMEOUT: Cannot reach the AI server. Check network/firewall.');
-        return res.status(504).json({
-          message: 'AI API timeout. Check your network connection.'
-        });
-      }
-      return res.status(503).json({ message: `Network error: ${fetchErr.message}` });
+      const { status, message } = describeAiFailure(fetchErr);
+      return res.status(status).json({ message });
     }
 
     if (!aiRes.ok) {
@@ -1152,12 +1147,23 @@ RULES:
       console.warn(`Summary served by fallback model "${modelUsed}" (primary "${AI_MODEL}" was unavailable).`);
     }
 
+    // Honest signal instead of silently rendering broken output: the client's
+    // parser (AISummaryModal.jsx) splits on these section markers, so if the
+    // model didn't follow the requested format closely, tell the user rather
+    // than let it look like a normal (but oddly laid out) summary.
+    const REQUIRED_SECTION_MARKERS = ['🏥', '📋', '🧠', '🔴'];
+    const missingMarkers = REQUIRED_SECTION_MARKERS.filter((m) => !summary.includes(m));
+    const parseWarning = missingMarkers.length > 0;
+    if (parseWarning) {
+      console.warn(`Summary for document ${docId} is missing expected section marker(s): ${missingMarkers.join(' ')}`);
+    }
+
     await logAudit({
       patientId: doc.patient_id, documentId: docId, actorUserId: userId,
-      action: 'ai_summarize', req, metadata: { model: modelUsed, baseUrl: AI_BASE_URL },
+      action: 'ai_summarize', req, metadata: { model: modelUsed, baseUrl: AI_BASE_URL, parseWarning },
     });
 
-    res.json({ summary, filename: doc.original_filename });
+    res.json({ summary, filename: doc.original_filename, parseWarning });
   } catch (err) {
     console.error('AI summarize error:', err.message);
     console.error('Stack:', err.stack);

@@ -89,6 +89,7 @@ function parseSection(text) {
 export default function AISummaryModal({ documentId, filename, onClose }) {
   const [status, setStatus] = useState('loading'); // loading | done | error
   const [summary, setSummary] = useState('');
+  const [parseWarning, setParseWarning] = useState(false);
   const [error, setError] = useState('');
   const contentRef = useRef(null);
 
@@ -100,6 +101,7 @@ export default function AISummaryModal({ documentId, filename, onClose }) {
         const data = await summarizeDocument(documentId);
         if (cancelled) return;
         setSummary(data.summary);
+        setParseWarning(Boolean(data.parseWarning));
         setStatus('done');
       } catch (err) {
         if (cancelled) return;
@@ -156,6 +158,12 @@ export default function AISummaryModal({ documentId, filename, onClose }) {
 
           {status === 'done' && (
             <div className="aisummary-result">
+              {parseWarning && (
+                <div className="aisummary-parse-warning">
+                  <span>⚠️</span>
+                  <span>This response didn't come back in the expected format — showing the AI's raw output below instead of the usual structured layout.</span>
+                </div>
+              )}
               {parseSection(summary)}
             </div>
           )}

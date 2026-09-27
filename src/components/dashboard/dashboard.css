@@ -1540,6 +1540,7 @@
 .aisummary-list, .aisummary-qlist { margin: 0; padding-left: 20px; color: #475569; font-size: 13.5px; line-height: 1.7; }
 .aisummary-text { margin: 0; color: #475569; font-size: 13.5px; line-height: 1.65; }
 
+.aisummary-parse-warning { display: flex; align-items: flex-start; gap: 8px; background: #eff6ff; border: 1px solid #bfdbfe; color: #1e40af; border-radius: 8px; padding: 10px 12px; margin-bottom: 14px; font-size: 13px; line-height: 1.5; }
 .aisummary-alerts { background: #fffbeb; border-color: #fde68a; }
 .aisummary-alert-row { color: #92400e; font-size: 13px; line-height: 1.7; }
 
