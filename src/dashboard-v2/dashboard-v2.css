@@ -647,6 +647,10 @@
   display: flex;
   flex-direction: column;
   gap: 11px;
+  width: 100%;
+  text-align: left;
+  font-family: inherit;
+  color: inherit;
 }
 
 .mv-stat-head {
@@ -1395,4 +1399,193 @@
 .mv-chat .chat-input-row .btn.btn-primary:disabled {
   opacity: 0.5;
   cursor: default;
+}
+
+/* ---------- DocumentViewer / AISummaryModal re-skin ----------
+   Both components are shared with the untouched Doctor dashboard
+   (components/dashboard/{DocumentViewer,AISummaryModal}.jsx), so their
+   own classnames/JSX stay untouched — these overrides are scoped under
+   .mv-root and only apply when opened from the new Patient dashboard,
+   where they were previously always light-mode teal/purple regardless
+   of the app's actual light/dark toggle. */
+
+.mv-root .docviewer-shell {
+  background: var(--mv-surface-card);
+  box-shadow: var(--mv-shadow-card);
+}
+
+.mv-root .docviewer-header {
+  background: var(--mv-surface-card);
+  border-bottom: 1px solid var(--mv-hairline);
+}
+
+.mv-root .docviewer-filename {
+  font-family: inherit;
+  color: var(--mv-text);
+}
+
+.mv-root .docviewer-verified-tag {
+  color: var(--mv-accent-text);
+}
+
+.mv-root .docviewer-btn {
+  background: var(--mv-surface-elevated);
+  color: var(--mv-text-muted);
+}
+
+.mv-root .docviewer-btn:hover {
+  background: var(--mv-hairline);
+  color: var(--mv-text);
+}
+
+.mv-root .docviewer-close-btn:hover {
+  background: var(--mv-red-soft);
+  color: var(--mv-red);
+}
+
+.mv-root .docviewer-download-btn:hover {
+  background: var(--mv-green-soft);
+  color: var(--mv-green);
+}
+
+.mv-root .docviewer-zoom-label {
+  color: var(--mv-text);
+}
+
+.mv-root .docviewer-sep {
+  background: var(--mv-hairline);
+}
+
+.mv-root .docviewer-viewport {
+  background: var(--mv-canvas);
+}
+
+.mv-root .docviewer-unsupported-name {
+  color: var(--mv-text);
+}
+
+.mv-root .docviewer-unsupported-hint {
+  color: var(--mv-text-faint);
+}
+
+.mv-root .aisummary-shell {
+  background: var(--mv-surface-card);
+  box-shadow: var(--mv-shadow-card);
+}
+
+.mv-root .aisummary-header {
+  background: var(--mv-accent);
+  color: var(--mv-on-accent);
+}
+
+.mv-root .aisummary-body {
+  color: var(--mv-text);
+}
+
+.mv-root .aisummary-spinner {
+  border-color: var(--mv-hairline);
+  border-top-color: var(--mv-accent);
+}
+
+.mv-root .aisummary-loading-title {
+  color: var(--mv-text);
+}
+
+.mv-root .aisummary-loading-sub {
+  color: var(--mv-text-faint);
+}
+
+.mv-root .aisummary-loading-dots span {
+  background: var(--mv-accent);
+}
+
+.mv-root .aisummary-error {
+  color: var(--mv-red);
+}
+
+.mv-root .aisummary-section {
+  background: var(--mv-surface-elevated);
+  border-color: var(--mv-hairline);
+}
+
+.mv-root .aisummary-doc-id {
+  background: var(--mv-accent-soft);
+  border-color: var(--mv-hairline-strong);
+  color: var(--mv-accent-text);
+}
+
+.mv-root .aisummary-section-label {
+  color: var(--mv-text);
+}
+
+.mv-root .aisummary-list,
+.mv-root .aisummary-qlist,
+.mv-root .aisummary-text {
+  color: var(--mv-text-muted);
+}
+
+.mv-root .aisummary-alerts {
+  background: var(--mv-blue-soft);
+  border-color: var(--mv-hairline-strong);
+}
+
+.mv-root .aisummary-alert-row {
+  color: var(--mv-blue);
+}
+
+.mv-root .aisummary-plain {
+  background: var(--mv-accent-soft);
+  border-color: var(--mv-hairline-strong);
+}
+
+.mv-root .aisummary-text-highlight {
+  color: var(--mv-accent-text);
+}
+
+.mv-root .aisummary-urgency.is-routine {
+  background: var(--mv-green-soft);
+  color: var(--mv-green);
+}
+
+.mv-root .aisummary-urgency.is-monitor {
+  background: var(--mv-blue-soft);
+  color: var(--mv-blue);
+}
+
+.mv-root .aisummary-urgency.is-urgent {
+  background: var(--mv-red-soft);
+  color: var(--mv-red);
+}
+
+.mv-root .aisummary-footer {
+  background: var(--mv-surface-elevated);
+  border-top: 1px solid var(--mv-hairline);
+}
+
+.mv-root .aisummary-disclaimer {
+  color: var(--mv-text-faint);
+}
+
+/* The two modals also reach for the old marketing-site .btn/.btn-primary/
+   .btn-outline classes for their Close/Download actions — re-skin those
+   too, scoped the same way. */
+.mv-root .docviewer-unsupported .btn.btn-primary,
+.mv-root .aisummary-footer .btn.btn-primary {
+  background: var(--mv-accent);
+  color: var(--mv-on-accent);
+  border-color: var(--mv-accent);
+  box-shadow: none;
+  font-family: inherit;
+}
+
+.mv-root .aisummary-error .btn.btn-outline {
+  background: transparent;
+  color: var(--mv-accent-text);
+  border-color: var(--mv-hairline-strong);
+}
+
+.mv-root .aisummary-error .btn.btn-outline:hover {
+  background: var(--mv-accent-soft);
+  border-color: var(--mv-hairline-strong);
+  color: var(--mv-accent-text);
 }

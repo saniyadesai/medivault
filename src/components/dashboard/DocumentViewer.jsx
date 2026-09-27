@@ -1,7 +1,7 @@
 import { useState, useRef, useCallback, useEffect } from 'react';
 import VerifiedStamp from './VerifiedStamp';
 
-export default function DocumentViewer({ url, filename, mimeType, onClose }) {
+export default function DocumentViewer({ url, filename, mimeType, onClose, verifiedColor }) {
   const [zoom, setZoom] = useState(1);
   const [rotate, setRotate] = useState(0);
   const [pan, setPan] = useState({ x: 0, y: 0 });
@@ -56,7 +56,7 @@ export default function DocumentViewer({ url, filename, mimeType, onClose }) {
         {/* ── Header ── */}
         <div className="docviewer-header">
           <div className="docviewer-title-row">
-            <div className="docviewer-badge-mini"><VerifiedStamp size={28} /></div>
+            <div className="docviewer-badge-mini"><VerifiedStamp size={28} color={verifiedColor} /></div>
             <div>
               <h3 className="docviewer-filename">{filename || 'Document'}</h3>
               <span className="docviewer-verified-tag">
@@ -112,7 +112,7 @@ export default function DocumentViewer({ url, filename, mimeType, onClose }) {
 
           {/* ── Floating verified badge (banner style at bottom right) ── */}
           <div className="docviewer-stamp-float" style={{ bottom: 16, right: 16, top: 'auto', left: 'auto' }}>
-            <VerifiedStamp size={70} variant="banner" />
+            <VerifiedStamp size={70} variant="banner" color={verifiedColor} />
           </div>
         </div>
       </div>

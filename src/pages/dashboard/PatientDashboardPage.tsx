@@ -292,6 +292,7 @@ export default function PatientDashboardPage() {
           filename={viewerDoc.filename}
           mimeType={viewerDoc.mimeType}
           onClose={() => { URL.revokeObjectURL(viewerDoc.url); setViewerDoc(null); }}
+          verifiedColor="var(--mv-accent-text)"
         />
       )}
       {summaryDoc && (

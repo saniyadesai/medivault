@@ -13,7 +13,6 @@ import {
   HeartIcon,
   ShieldCheckIcon,
   ShieldIcon,
-  UploadIcon,
 } from './icons';
 import type { PatientDashboardData, PatientView } from './types';
 
@@ -22,6 +21,16 @@ const METRIC_ICONS: Record<string, ReactNode> = {
   pending: <ShieldCheckIcon size={15} />,
   active: <ActivityIcon size={15} />,
   audit: <ClipboardIcon size={15} />,
+};
+
+// Where each metric tile navigates on click. "active" (Active Grants) has no
+// dedicated tab of its own — Access Requests is where grant status actually
+// lives (the approved pill), so it's the closest real destination.
+const METRIC_DESTINATIONS: Record<string, PatientView> = {
+  docs: 'documents',
+  pending: 'requests',
+  active: 'requests',
+  audit: 'audit',
 };
 
 interface PatientOverviewProps {
@@ -42,14 +51,19 @@ export function PatientOverview({ data, onNavigate, onViewDocument, showToast }:
       {/* Real vault metrics */}
       <div className="mv-grid-4">
         {data.metrics.map((metric) => (
-          <div key={metric.key} className="mv-tile mv-stat-tile">
+          <button
+            key={metric.key}
+            type="button"
+            className="mv-tile mv-stat-tile is-clickable"
+            onClick={() => onNavigate(METRIC_DESTINATIONS[metric.key] ?? 'overview')}
+          >
             <div className="mv-stat-head">
               {METRIC_ICONS[metric.key] ?? <ActivityIcon size={15} />}
               <span className="mv-stat-label">{metric.title}</span>
             </div>
             <div className="mv-stat-value mv-tabular">{metric.value}</div>
             <span className="mv-stat-hint">{metric.hint}</span>
-          </div>
+          </button>
         ))}
       </div>
 
@@ -172,8 +186,8 @@ export function PatientOverview({ data, onNavigate, onViewDocument, showToast }:
             <span className="mv-card-title">Quick Actions</span>
             <div className="mv-grid-4" style={{ gridTemplateColumns: 'repeat(2, minmax(0, 1fr))', gap: 8 }}>
               <button type="button" className="mv-tile is-clickable mv-quick-tile" onClick={() => onNavigate('documents')}>
-                <UploadIcon size={15} />
-                <span>Upload<br />Document</span>
+                <FileIcon size={15} />
+                <span>View<br />Documents</span>
               </button>
               <button type="button" className="mv-tile is-clickable mv-quick-tile" onClick={() => onNavigate('requests')}>
                 <ShieldCheckIcon size={15} />
@@ -183,7 +197,7 @@ export function PatientOverview({ data, onNavigate, onViewDocument, showToast }:
                 <CalendarPlusIcon size={15} />
                 <span>Book<br />Appointment</span>
               </button>
-              <button type="button" className="mv-tile is-danger is-clickable mv-quick-tile" onClick={notConnected}>
+              <button type="button" className="mv-tile is-danger is-clickable mv-quick-tile" onClick={() => onNavigate('settings')}>
                 <ShieldIcon size={15} />
                 <span>Emergency<br />Card</span>
               </button>
