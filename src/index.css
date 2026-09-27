@@ -181,10 +181,15 @@ ul {
   top: 0;
   z-index: 1000;
   height: var(--nav-h);
-  background: var(--deep-twilight);
+  /* Plum brand — matches the dashboard sidebar's gradient exactly, so the
+     marketing site and the app read as the same product. Scoped to .navbar
+     only (this migration is going section by section); the shared
+     --deep-twilight/--bright-teal/etc. tokens below are untouched until
+     their own section's turn. */
+  background: linear-gradient(165deg, #3d1230 0%, #2b0f20 55%, #200a18 100%);
   display: flex;
   align-items: center;
-  box-shadow: 0 2px 16px rgba(3, 4, 94, 0.25);
+  box-shadow: 0 2px 16px rgba(43, 15, 32, 0.35);
 }
 
 .nav-inner {
@@ -236,7 +241,7 @@ ul {
 .nav-links li a {
   font-size: 14px;
   font-weight: 500;
-  color: rgba(202, 240, 248, 0.85);
+  color: rgba(251, 243, 248, 0.72);
   padding: 8px 14px;
   border-radius: 8px;
   transition: color 0.2s ease, background 0.2s ease;
@@ -248,8 +253,8 @@ ul {
 }
 
 .nav-links li a.is-active {
-  color: var(--turquoise-surf);
-  background: rgba(0, 180, 216, 0.12);
+  color: #e6a0c4;
+  background: rgba(230, 160, 196, 0.14);
   font-weight: 600;
   position: relative;
 }
@@ -262,7 +267,7 @@ ul {
   bottom: 2px;
   height: 2px;
   border-radius: 2px;
-  background: var(--turquoise-surf);
+  background: #e6a0c4;
 }
 
 .nav-buttons {
@@ -272,21 +277,31 @@ ul {
 }
 
 .navbar .btn-outline {
-  color: var(--frosted-blue);
-  border-color: var(--frosted-blue);
+  color: #e6a0c4;
+  border-color: #e6a0c4;
   font-size: 14px;
   padding: 9px 20px;
 }
 
 .navbar .btn-outline:hover {
-  background: rgba(144, 224, 239, 0.12);
+  background: rgba(230, 160, 196, 0.12);
   color: var(--white);
-  border-color: var(--turquoise-surf);
+  border-color: #d1689e;
 }
 
 .navbar .btn-primary {
+  background: #d1689e;
+  border-color: #d1689e;
+  color: #2b0f20;
   font-size: 14px;
   padding: 9px 20px;
+  box-shadow: none;
+}
+
+.navbar .btn-primary:hover {
+  background: #dd82b3;
+  border-color: #dd82b3;
+  box-shadow: 0 6px 20px rgba(209, 104, 158, 0.35);
 }
 
 /* Hamburger */
