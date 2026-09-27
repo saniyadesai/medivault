@@ -1,12 +1,16 @@
-import { useEffect, useState, useCallback } from 'react';
-import DashboardLayout from '../../components/dashboard/DashboardLayout';
+import { useCallback, useEffect, useMemo, useState, Fragment, type ChangeEvent } from 'react';
+import { DashboardShell } from '../../dashboard-v2/DashboardShell';
+import { DoctorOverview } from '../../dashboard-v2/DoctorOverview';
+import { ToastStack } from '../../dashboard-v2/ToastStack';
+import { useToast } from '../../dashboard-v2/useToast';
+import type { DoctorDashboardData, DoctorView, SearchResultItem } from '../../dashboard-v2/types';
+
 import DashboardSection from '../../components/dashboard/DashboardSection';
-import MetricCard from '../../components/dashboard/MetricCard';
 import DataTable from '../../components/dashboard/DataTable';
 import ActivityFeed from '../../components/dashboard/ActivityFeed';
 import UploadModal from '../../components/dashboard/UploadModal';
 import { getDoctorDashboardData } from '../../services/dashboardApi';
-import { submitAccessRequest, searchPatientByEmail, requestDocumentAccess } from '../../services/accessApi';
+import { searchPatientByEmail, requestDocumentAccess } from '../../services/accessApi';
 import { uploadDocument, viewDocument } from '../../services/vaultApi';
 import DocumentViewer from '../../components/dashboard/DocumentViewer';
 import AISummaryModal from '../../components/dashboard/AISummaryModal';
@@ -16,20 +20,26 @@ import ChatPanel from '../../components/chat/ChatPanel';
 import { updateProfile } from '../../services/profileApi';
 import { useAuth } from '../../hooks/useAuth';
 
-const NAV_ITEMS = [
-  { key: 'overview', label: 'Overview' },
-  { key: 'upload', label: 'Upload Document' },
-  { key: 'shared-docs', label: 'Shared Documents' },
-  { key: 'grants', label: 'Active Grants' },
-  { key: 'request', label: 'Request Access' },
-  { key: 'history', label: 'Request History' },
-  { key: 'activity', label: 'Activity Log' },
-  { key: 'emergency', label: '🚨 Emergency Access' },
-  { key: 'drug-interactions', label: '💊 Drug Interactions' },
-  { key: 'chat', label: '💬 Chat' },
-  { key: 'settings', label: 'Profile & Settings' },
-  { key: 'notifications', label: 'Notifications' },
-];
+import {
+  ActivityIcon,
+  BellIcon,
+  ClipboardIcon,
+  FileIcon,
+  FolderIcon,
+  GridIcon,
+  MessageIcon,
+  PillIcon,
+  SettingsIcon,
+  ShieldCheckIcon,
+  ShieldIcon,
+  UploadIcon,
+} from '../../dashboard-v2/icons';
+import '../../theme/theme.css';
+import '../../dashboard-v2/dashboard-v2.css';
+// DocumentViewer/AISummaryModal/EmergencyAccess/DrugInteractions below still
+// depend on classes defined in here (docviewer-*/aisummary-*/ea-*/di-*); see
+// PatientDashboardPage.tsx for why this stays imported even post-migration.
+import '../../components/dashboard/dashboard.css';
 
 const grantedColumns = [
   { key: 'patient', label: 'Patient' },
@@ -38,7 +48,7 @@ const grantedColumns = [
   {
     key: 'status',
     label: 'Status',
-    render: (row) => <span className={`dashboard-badge is-${row.status}`}>{row.status}</span>,
+    render: (row: { status: string }) => <span className={`dashboard-badge is-${row.status}`}>{row.status}</span>,
   },
 ];
 
@@ -49,7 +59,7 @@ const historyColumns = [
   {
     key: 'status',
     label: 'Status',
-    render: (row) => <span className={`dashboard-badge is-${row.status}`}>{row.status}</span>,
+    render: (row: { status: string }) => <span className={`dashboard-badge is-${row.status}`}>{row.status}</span>,
   },
 ];
 
@@ -62,17 +72,22 @@ const sharedDocColumns = [
   {
     key: 'status',
     label: 'Status',
-    render: (row) => <span className={`dashboard-badge is-${row.status}`}>{row.status}</span>,
+    render: (row: { status: string }) => <span className={`dashboard-badge is-${row.status}`}>{row.status}</span>,
   },
 ];
 
+interface AuthUser {
+  email?: string;
+  profile?: { fullName?: string; specialization?: string; licenseNumber?: string };
+}
+
 export default function DoctorDashboardPage() {
-  const { user } = useAuth();
-  const [data, setData] = useState(null);
+  const { user, logout } = useAuth() as { user: AuthUser | null; logout: () => void };
+  const [data, setData] = useState<DoctorDashboardData | null>(null);
   const [loading, setLoading] = useState(true);
-  const [activeView, setActiveView] = useState('overview');
-  const [requestForm, setRequestForm] = useState({ patientEmail: '', reason: '', selectedDocs: [] });
-  const [searchResult, setSearchResult] = useState(null);
+  const [activeView, setActiveView] = useState<DoctorView>('overview');
+  const [requestForm, setRequestForm] = useState({ patientEmail: '', reason: '', selectedDocs: [] as string[] });
+  const [searchResult, setSearchResult] = useState<any>(null);
   const [searching, setSearching] = useState(false);
   const [showUpload, setShowUpload] = useState(false);
   const [profile, setProfile] = useState({
@@ -80,19 +95,18 @@ export default function DoctorDashboardPage() {
     specialization: user?.profile?.specialization || '',
     licenseNumber: user?.profile?.licenseNumber || '',
   });
-  const [notifySettings, setNotifySettings] = useState({});
+  const [notifySettings, setNotifySettings] = useState<Record<string, boolean>>({});
   const [busy, setBusy] = useState(false);
   const [feedback, setFeedback] = useState('');
-  const [viewerDoc, setViewerDoc] = useState(null);
-  const [summaryDoc, setSummaryDoc] = useState(null);
+  const [viewerDoc, setViewerDoc] = useState<{ url: string; filename: string; mimeType: string } | null>(null);
+  const [summaryDoc, setSummaryDoc] = useState<{ id: string; name: string } | null>(null);
+  const { toasts, showToast } = useToast();
 
   const refreshData = useCallback(() => {
     setLoading(true);
-    getDoctorDashboardData().then((result) => {
-      const initialNotifications = {};
-      result.notifications.forEach((entry) => {
-        initialNotifications[entry.id] = entry.enabled;
-      });
+    getDoctorDashboardData().then((result: DoctorDashboardData) => {
+      const initialNotifications: Record<string, boolean> = {};
+      result.notifications.forEach((entry) => { initialNotifications[entry.id] = entry.enabled; });
       setNotifySettings(initialNotifications);
       setData(result);
       setLoading(false);
@@ -101,12 +115,10 @@ export default function DoctorDashboardPage() {
 
   useEffect(() => { refreshData(); }, [refreshData]);
 
-  const handleRequestChange = (event) => {
+  const handleRequestChange = (event: ChangeEvent<HTMLInputElement | HTMLTextAreaElement>) => {
     const { name, value } = event.target;
     setRequestForm((prev) => ({ ...prev, [name]: value }));
-    if (name === 'patientEmail') {
-      setSearchResult(null);
-    }
+    if (name === 'patientEmail') setSearchResult(null);
   };
 
   const handleSearchPatient = async () => {
@@ -120,7 +132,7 @@ export default function DoctorDashboardPage() {
       const result = await searchPatientByEmail(requestForm.patientEmail);
       setSearchResult(result);
       setRequestForm((prev) => ({ ...prev, selectedDocs: [] }));
-    } catch (err) {
+    } catch (err: any) {
       setFeedback(err.message || 'Patient not found.');
       setSearchResult(null);
     } finally {
@@ -128,7 +140,7 @@ export default function DoctorDashboardPage() {
     }
   };
 
-  const handleToggleDoc = (docId) => {
+  const handleToggleDoc = (docId: string) => {
     setRequestForm((prev) => {
       const selected = prev.selectedDocs.includes(docId)
         ? prev.selectedDocs.filter((id) => id !== docId)
@@ -139,15 +151,14 @@ export default function DoctorDashboardPage() {
 
   const handleSelectAllDocs = () => {
     if (!searchResult) return;
-    const allDocIds = searchResult.documents.map((d) => d.id);
-    setRequestForm((prev) => ({ ...prev, selectedDocs: allDocIds }));
+    setRequestForm((prev) => ({ ...prev, selectedDocs: searchResult.documents.map((d: any) => d.id) }));
   };
 
   const handleDeselectAllDocs = () => {
     setRequestForm((prev) => ({ ...prev, selectedDocs: [] }));
   };
 
-  const handleProfileChange = (event) => {
+  const handleProfileChange = (event: ChangeEvent<HTMLInputElement>) => {
     const { name, value } = event.target;
     setProfile((prev) => ({ ...prev, [name]: value }));
   };
@@ -162,34 +173,37 @@ export default function DoctorDashboardPage() {
     try {
       await requestDocumentAccess(searchResult.patient.id, requestForm.selectedDocs, requestForm.reason);
       setFeedback('Access request submitted!');
+      showToast('Access request submitted');
       setRequestForm({ patientEmail: '', reason: '', selectedDocs: [] });
       setSearchResult(null);
       refreshData();
-    } catch (err) {
+    } catch (err: any) {
       setFeedback(err.message);
     } finally {
       setBusy(false);
     }
   };
 
-  const handleUpload = async (uploadForm) => {
+  const handleUpload = async (uploadForm: any) => {
     await uploadDocument(uploadForm);
     setFeedback('Document uploaded & stamped successfully!');
+    showToast('Document uploaded & stamped');
     refreshData();
   };
 
-  const handleView = async (docId) => {
+  const handleView = async (docId: string) => {
     setFeedback('');
     try {
       const doc = await viewDocument(docId);
       setViewerDoc(doc);
-    } catch (err) {
+    } catch (err: any) {
       setFeedback(err.message);
+      showToast(err.message, 'info');
     }
   };
 
-  const handleSummary = (docId) => {
-    const doc = (data.sharedDocuments || []).find((d) => d.id === docId);
+  const handleSummary = (docId: string) => {
+    const doc = (data?.sharedDocuments || []).find((d) => d.id === docId);
     setSummaryDoc({ id: docId, name: doc?.name || 'Document' });
   };
 
@@ -198,7 +212,7 @@ export default function DoctorDashboardPage() {
     {
       key: 'actions',
       label: '',
-      render: (row) => (
+      render: (row: { id: string }) => (
         <div className="dashboard-inline-actions">
           <button type="button" className="btn btn-outline" onClick={() => handleView(row.id)}>View</button>
           <button type="button" className="btn btn-ai-summary" onClick={() => handleSummary(row.id)}>🤖 Summary</button>
@@ -211,19 +225,17 @@ export default function DoctorDashboardPage() {
     setBusy(true);
     setFeedback('');
     try {
-      await updateProfile('doctor', {
-        fullName: profile.fullName,
-        specialization: profile.specialization,
-      });
+      await updateProfile('doctor', { fullName: profile.fullName, specialization: profile.specialization });
       setFeedback('Profile saved successfully!');
-    } catch (err) {
+      showToast('Profile saved');
+    } catch (err: any) {
       setFeedback(err.message);
     } finally {
       setBusy(false);
     }
   };
 
-  const handleViewChange = (view) => {
+  const handleViewChange = (view: DoctorView) => {
     setFeedback('');
     if (view === 'upload') {
       setShowUpload(true);
@@ -232,25 +244,113 @@ export default function DoctorDashboardPage() {
     setActiveView(view);
   };
 
-  if (loading || !data) {
-    return (
-      <DashboardLayout title="Doctor Dashboard" subtitle="Manage access requests and review shared patient records." navItems={NAV_ITEMS} activeView={activeView} onViewChange={handleViewChange}>
-        <p className="dashboard-empty-state">Loading doctor dashboard...</p>
-      </DashboardLayout>
-    );
-  }
+  const searchItems: SearchResultItem[] = useMemo(() => {
+    if (!data) return [];
+    const items: SearchResultItem[] = [];
+
+    data.sharedDocuments.forEach((doc) => {
+      items.push({
+        id: `doc-${doc.id}`,
+        category: 'Shared Document',
+        label: doc.name,
+        meta: `${doc.patient} · ${doc.date}`,
+        onSelect: () => handleView(doc.id),
+      });
+    });
+
+    data.grantedAccess.forEach((grant) => {
+      items.push({
+        id: `grant-${grant.id}`,
+        category: 'Active Grant',
+        label: grant.patient,
+        meta: `${grant.scope} · expires ${grant.expiresAt}`,
+        onSelect: () => handleViewChange('grants'),
+      });
+    });
+
+    data.requestHistory.forEach((req) => {
+      items.push({
+        id: `hist-${req.id}`,
+        category: 'Request History',
+        label: req.patient,
+        meta: `${req.status} · ${req.reason}`,
+        onSelect: () => handleViewChange('history'),
+      });
+    });
+
+    data.auditEvents.forEach((event) => {
+      items.push({
+        id: `audit-${event.id}`,
+        category: 'Activity',
+        label: event.title,
+        meta: event.time,
+        onSelect: () => handleViewChange('activity'),
+      });
+    });
+
+    return items;
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [data]);
+
+  const navGroups = [
+    { label: 'Workspace', keys: ['overview', 'shared-docs'] as DoctorView[] },
+    { label: 'Access & Activity', keys: ['grants', 'request', 'history', 'activity', 'notifications'] as DoctorView[] },
+    { label: 'Tools', keys: ['emergency', 'drug-interactions', 'chat', 'settings'] as DoctorView[] },
+  ];
+
+  const navItems = [
+    { key: 'overview' as const, label: 'Overview', icon: <GridIcon size={16} /> },
+    { key: 'shared-docs' as const, label: 'Shared Documents', icon: <FolderIcon size={16} /> },
+    { key: 'grants' as const, label: 'Active Grants', icon: <ShieldCheckIcon size={16} /> },
+    { key: 'request' as const, label: 'Request Access', icon: <FileIcon size={16} /> },
+    { key: 'history' as const, label: 'Request History', icon: <ClipboardIcon size={16} /> },
+    { key: 'activity' as const, label: 'Activity Log', icon: <ActivityIcon size={16} /> },
+    { key: 'emergency' as const, label: 'Emergency Access', icon: <ShieldIcon size={16} /> },
+    { key: 'drug-interactions' as const, label: 'Drug Interactions', icon: <PillIcon size={16} /> },
+    { key: 'chat' as const, label: 'Chat', icon: <MessageIcon size={16} /> },
+    { key: 'settings' as const, label: 'Profile & Settings', icon: <SettingsIcon size={16} /> },
+    { key: 'notifications' as const, label: 'Notifications', icon: <BellIcon size={16} /> },
+  ];
+
+  const userName = user?.profile?.fullName || user?.email || 'Doctor';
+  const userInitials = userName
+    .split(' ')
+    .map((part: string) => part[0])
+    .slice(0, 2)
+    .join('')
+    .toUpperCase();
+
+  const viewTitles: Record<DoctorView, [string, string]> = {
+    overview: ['Overview', 'Your current access and care workflow summary.'],
+    upload: ['Upload Document', 'Upload Document'],
+    'shared-docs': ['Shared Documents', 'Documents shared with you by patients.'],
+    grants: ['Active Grants', 'Your currently active access grants.'],
+    request: ['Request Access', 'Search for a patient and select specific documents to request.'],
+    history: ['Request History', 'All your previous access requests.'],
+    activity: ['Activity Log', 'Recent activities on your account.'],
+    emergency: ['Emergency Access', 'Initiate 24-hour emergency access to patient records via biometric verification.'],
+    'drug-interactions': ['Drug Interactions', 'Record and manage drug interaction notes for patients.'],
+    chat: ['Chat', 'Ask questions about the documents you have access to.'],
+    settings: ['Profile & Settings', 'Doctor profile details for interoperability and verification.'],
+    notifications: ['Notifications', 'How you receive request and emergency alerts.'],
+  };
+  const [topbarTitle, topbarSubtitle] = viewTitles[activeView];
 
   const renderView = () => {
+    if (loading || !data) {
+      return <p className="mv-empty">Loading doctor dashboard…</p>;
+    }
+
     switch (activeView) {
       case 'overview':
         return (
-          <DashboardSection id="overview" title="Overview" subtitle="Your current access and care workflow summary.">
-            <div className="metrics-grid">
-              {data.metrics.map((metric) => (
-                <MetricCard key={metric.key} title={metric.title} value={metric.value} hint={metric.hint} />
-              ))}
-            </div>
-          </DashboardSection>
+          <DoctorOverview
+            data={data}
+            onNavigate={handleViewChange}
+            onViewDocument={handleView}
+            onOpenUpload={() => setShowUpload(true)}
+            showToast={showToast}
+          />
         );
 
       case 'shared-docs':
@@ -275,20 +375,15 @@ export default function DoctorDashboardPage() {
               <div className="dashboard-field">
                 <label htmlFor="patientEmail">Patient Email</label>
                 <div style={{ display: 'flex', gap: 8 }}>
-                  <input 
-                    id="patientEmail" 
-                    name="patientEmail" 
-                    value={requestForm.patientEmail} 
-                    onChange={handleRequestChange} 
+                  <input
+                    id="patientEmail"
+                    name="patientEmail"
+                    value={requestForm.patientEmail}
+                    onChange={handleRequestChange}
                     placeholder="patient@example.com"
                     style={{ flex: 1 }}
                   />
-                  <button 
-                    type="button" 
-                    className="btn btn-outline" 
-                    onClick={handleSearchPatient}
-                    disabled={searching}
-                  >
+                  <button type="button" className="btn btn-outline" onClick={handleSearchPatient} disabled={searching}>
                     {searching ? 'Searching...' : 'Search'}
                   </button>
                 </div>
@@ -316,13 +411,9 @@ export default function DoctorDashboardPage() {
                   </div>
                 </div>
                 <div style={{ maxHeight: 200, overflowY: 'auto', border: '1px solid #ddd', borderRadius: 6, padding: 8 }}>
-                  {searchResult.documents.map((doc) => (
+                  {searchResult.documents.map((doc: any) => (
                     <label key={doc.id} style={{ display: 'flex', alignItems: 'center', gap: 8, padding: '6px 0', cursor: 'pointer', borderBottom: '1px solid #eee' }}>
-                      <input
-                        type="checkbox"
-                        checked={requestForm.selectedDocs.includes(doc.id)}
-                        onChange={() => handleToggleDoc(doc.id)}
-                      />
+                      <input type="checkbox" checked={requestForm.selectedDocs.includes(doc.id)} onChange={() => handleToggleDoc(doc.id)} />
                       <span style={{ flex: 1 }}>{doc.documentName || doc.originalFilename}</span>
                       <span style={{ fontSize: '0.85rem', color: '#666' }}>{doc.documentType}</span>
                       <span style={{ fontSize: '0.8rem', color: '#888' }}>{doc.visitDate || doc.uploadedAt?.split('T')[0]}</span>
@@ -339,13 +430,7 @@ export default function DoctorDashboardPage() {
             <div className="dashboard-form-grid" style={{ marginBottom: 16 }}>
               <div className="dashboard-field span-2">
                 <label htmlFor="reason">Reason for Request</label>
-                <textarea 
-                  id="reason" 
-                  name="reason" 
-                  value={requestForm.reason} 
-                  onChange={handleRequestChange}
-                  placeholder="Explain why you need access to these documents..."
-                />
+                <textarea id="reason" name="reason" value={requestForm.reason} onChange={handleRequestChange} placeholder="Explain why you need access to these documents..." />
               </div>
             </div>
             <div className="dashboard-inline-actions">
@@ -410,9 +495,9 @@ export default function DoctorDashboardPage() {
 
       case 'chat':
         return (
-          <DashboardSection id="chat" title="Chat" subtitle="Ask questions about the documents you have access to.">
+          <div className="mv-chat">
             <ChatPanel />
-          </DashboardSection>
+          </div>
         );
 
       case 'notifications':
@@ -420,13 +505,7 @@ export default function DoctorDashboardPage() {
           <DashboardSection id="notifications" title="Notifications" subtitle="How you receive request and emergency alerts.">
             <div className="dashboard-table-wrap">
               <table className="dashboard-table">
-                <thead>
-                  <tr>
-                    <th>Channel</th>
-                    <th>Description</th>
-                    <th>Enabled</th>
-                  </tr>
-                </thead>
+                <thead><tr><th>Channel</th><th>Description</th><th>Enabled</th></tr></thead>
                 <tbody>
                   {data.notifications.map((entry) => (
                     <tr key={entry.id}>
@@ -454,16 +533,25 @@ export default function DoctorDashboardPage() {
   };
 
   return (
-    <DashboardLayout title="Doctor Dashboard" subtitle="Manage access requests and review shared patient records." navItems={NAV_ITEMS} activeView={activeView} onViewChange={handleViewChange}>
-      <div className="dashboard-view-enter" key={activeView}>
-        {renderView()}
-      </div>
+    <DashboardShell
+      navGroups={navGroups}
+      navItems={navItems}
+      activeView={activeView}
+      onViewChange={handleViewChange}
+      title={topbarTitle}
+      subtitle={topbarSubtitle}
+      userName={userName}
+      userEmail={user?.email || ''}
+      userInitials={userInitials || 'D'}
+      roleLabel="Doctor"
+      onLogout={logout}
+      onHome={() => { window.location.href = '/'; }}
+      onNotificationsClick={() => handleViewChange('notifications')}
+      searchItems={searchItems}
+    >
+      {renderView()}
       {showUpload && (
-        <UploadModal
-          onUpload={handleUpload}
-          onClose={() => setShowUpload(false)}
-          busy={busy}
-        />
+        <UploadModal onUpload={handleUpload} onClose={() => setShowUpload(false)} busy={busy} />
       )}
       {viewerDoc && (
         <DocumentViewer
@@ -471,15 +559,13 @@ export default function DoctorDashboardPage() {
           filename={viewerDoc.filename}
           mimeType={viewerDoc.mimeType}
           onClose={() => { URL.revokeObjectURL(viewerDoc.url); setViewerDoc(null); }}
+          verifiedColor="var(--mv-accent-text)"
         />
       )}
       {summaryDoc && (
-        <AISummaryModal
-          documentId={summaryDoc.id}
-          filename={summaryDoc.name}
-          onClose={() => setSummaryDoc(null)}
-        />
+        <AISummaryModal documentId={summaryDoc.id} filename={summaryDoc.name} onClose={() => setSummaryDoc(null)} />
       )}
-    </DashboardLayout>
+      <ToastStack toasts={toasts} />
+    </DashboardShell>
   );
 }

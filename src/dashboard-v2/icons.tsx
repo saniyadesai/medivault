@@ -243,3 +243,32 @@ export function LogoutIcon(props: IconProps) {
     </svg>
   );
 }
+
+export function PillIcon(props: IconProps) {
+  return (
+    <svg {...base(props)}>
+      <rect x="3" y="10.5" width="18" height="8" rx="4" transform="rotate(-45 12 14.5)" />
+      <path d="M9 11l4 4" />
+    </svg>
+  );
+}
+
+export function StethoscopeIcon(props: IconProps) {
+  return (
+    <svg {...base(props)}>
+      <path d="M6 3v6a4 4 0 0 0 8 0V3" />
+      <path d="M10 13v2a6 6 0 0 0 12 0v-2" />
+      <circle cx="20" cy="10" r="2" />
+    </svg>
+  );
+}
+
+export function BuildingIcon(props: IconProps) {
+  return (
+    <svg {...base(props)}>
+      <rect x="4" y="3" width="16" height="18" rx="1" />
+      <path d="M9 8h1M14 8h1M9 12h1M14 12h1M9 16h1M14 16h1" />
+      <path d="M10 21v-4h4v4" />
+    </svg>
+  );
+}
