@@ -1,8 +1,12 @@
 .auth-shell {
+  /* Plum brand — final piece of the homepage/site color migration
+     (Navbar -> Hero -> Features -> Flow -> CTA/Footer -> auth pages).
+     This file is entirely self-contained (.auth-* classes only), so
+     everything here was safe to recolor directly, no scoping needed. */
   min-height: calc(100vh - var(--nav-h));
   display: grid;
   grid-template-columns: 1fr 1fr;
-  background: linear-gradient(140deg, var(--off-white) 0%, #ebf9ff 100%);
+  background: linear-gradient(140deg, #fdf7fb 0%, #f5e6ef 100%);
 }
 
 .auth-shell-panel {
@@ -10,8 +14,10 @@
 }
 
 .auth-shell-brand {
-  background: radial-gradient(circle at 15% 15%, rgba(0, 180, 216, 0.25), transparent 55%),
-    linear-gradient(150deg, var(--deep-twilight) 10%, #014f86 100%);
+  /* Same dark plum gradient as .navbar/.footer — the third dark surface
+     on the site, kept identical rather than "in the same family". */
+  background: radial-gradient(circle at 15% 15%, rgba(230, 160, 196, 0.25), transparent 55%),
+    linear-gradient(165deg, #3d1230 0%, #2b0f20 55%, #200a18 100%);
   color: var(--white);
   display: flex;
   flex-direction: column;
@@ -27,7 +33,7 @@
 }
 
 .auth-brand-kicker {
-  color: var(--frosted-blue);
+  color: #e6a0c4;
   text-transform: uppercase;
   letter-spacing: 2px;
   font-size: 12px;
@@ -75,7 +81,7 @@
 .auth-field label {
   display: block;
   margin-bottom: 6px;
-  color: var(--deep-twilight);
+  color: #2b0f20;
   font-size: 14px;
   font-weight: 600;
 }
@@ -84,13 +90,13 @@
 .auth-field select,
 .auth-field textarea {
   width: 100%;
-  border: 1.5px solid var(--border);
+  border: 1.5px solid #f0d9e8;
   border-radius: 10px;
   background: var(--white);
   padding: 12px 14px;
   font-size: 15px;
   font-family: var(--font-body);
-  color: var(--body-text);
+  color: #2b0f20;
   transition: border-color 0.25s ease, box-shadow 0.25s ease;
 }
 
@@ -103,8 +109,8 @@
 .auth-field select:focus,
 .auth-field textarea:focus {
   outline: none;
-  border-color: var(--bright-teal);
-  box-shadow: 0 0 0 3px rgba(0, 119, 182, 0.14);
+  border-color: #a8447f;
+  box-shadow: 0 0 0 3px rgba(168, 68, 127, 0.14);
 }
 
 .auth-field .has-error {
@@ -120,7 +126,7 @@
 .auth-field-hint {
   font-size: 12px;
   margin-top: 6px;
-  color: var(--muted-text);
+  color: #7a4560;
 }
 
 .auth-error-banner {
@@ -139,14 +145,30 @@
   margin-top: 6px;
 }
 
+/* AuthSubmitButton.jsx renders className="btn btn-primary auth-submit-btn" —
+   .btn-primary is the shared global class (still teal, untouched elsewhere);
+   this descendant selector outweighs its specificity so only the auth
+   submit button picks up plum. */
+.auth-shell-form .auth-submit-btn.btn-primary {
+  background: #a8447f;
+  border-color: #a8447f;
+  box-shadow: 0 2px 12px rgba(168, 68, 127, 0.3);
+}
+
+.auth-shell-form .auth-submit-btn.btn-primary:hover {
+  background: #8f386a;
+  border-color: #8f386a;
+  box-shadow: 0 6px 20px rgba(168, 68, 127, 0.35);
+}
+
 .auth-switch-copy {
   margin-top: 16px;
-  color: var(--muted-text);
+  color: #7a4560;
   font-size: 14px;
 }
 
 .auth-switch-copy a {
-  color: var(--bright-teal);
+  color: #a8447f;
   font-weight: 600;
 }
 
@@ -157,7 +179,7 @@
 }
 
 .auth-role-card {
-  border: 1px solid var(--border);
+  border: 1px solid #f0d9e8;
   border-radius: 12px;
   padding: 16px;
   background: var(--white);
@@ -166,23 +188,38 @@
 
 .auth-role-card:hover {
   transform: translateY(-2px);
-  box-shadow: var(--shadow-md);
+  box-shadow: 0 4px 20px rgba(168, 68, 127, 0.14);
 }
 
 .auth-role-card h3 {
-  color: var(--deep-twilight);
+  color: #2b0f20;
   margin-bottom: 6px;
 }
 
 .auth-role-card p {
-  color: var(--muted-text);
+  color: #7a4560;
   font-size: 14px;
   margin-bottom: 12px;
 }
 
+/* AuthRoleEntryPage.jsx's "Login/Register as <Role>" links use the bare
+   shared .btn.btn-primary class (no .auth-submit-btn) — same reasoning as
+   the submit button above, missed on the first pass. */
+.auth-role-card .btn.btn-primary {
+  background: #a8447f;
+  border-color: #a8447f;
+  box-shadow: 0 2px 12px rgba(168, 68, 127, 0.3);
+}
+
+.auth-role-card .btn.btn-primary:hover {
+  background: #8f386a;
+  border-color: #8f386a;
+  box-shadow: 0 6px 20px rgba(168, 68, 127, 0.35);
+}
+
 .auth-dashboard {
   min-height: calc(100vh - var(--nav-h));
-  background: linear-gradient(180deg, var(--off-white), var(--white));
+  background: linear-gradient(180deg, #fdf7fb, var(--white));
   padding: 64px 24px;
 }
 
@@ -190,20 +227,20 @@
   max-width: 760px;
   margin: 0 auto;
   background: var(--white);
-  border: 1px solid var(--border);
+  border: 1px solid #f0d9e8;
   border-radius: var(--radius-lg);
-  box-shadow: var(--shadow-card);
+  box-shadow: 0 2px 16px rgba(168, 68, 127, 0.07);
   padding: 28px;
 }
 
 .auth-dashboard-card h1 {
-  color: var(--deep-twilight);
+  color: #2b0f20;
   font-family: var(--font-heading);
   margin-bottom: 8px;
 }
 
 .auth-dashboard-card p {
-  color: var(--muted-text);
+  color: #7a4560;
   margin-bottom: 18px;
 }
 
