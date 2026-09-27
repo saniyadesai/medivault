@@ -11,7 +11,7 @@ import {
   SearchIcon,
   SunIcon,
 } from './icons';
-import type { NavItem, PatientView, SearchResultItem } from './types';
+import type { NavGroup, NavItem, SearchResultItem } from './types';
 
 // Shared open/close behavior for the search and profile dropdowns: closes on
 // an outside click or Escape. Not a hook per element type since both panels
@@ -39,28 +39,26 @@ function useDropdown<T extends HTMLElement>() {
   return { open, setOpen, ref };
 }
 
-const NAV_GROUPS: { label: string; keys: PatientView[] }[] = [
-  { label: 'Workspace', keys: ['overview', 'documents'] },
-  { label: 'Access & Activity', keys: ['requests', 'audit', 'notifications'] },
-  { label: 'Tools', keys: ['chat', 'settings'] },
-];
-
-interface DashboardShellProps {
-  navItems: NavItem[];
-  activeView: PatientView;
-  onViewChange: (view: PatientView) => void;
+interface DashboardShellProps<V extends string> {
+  navGroups: NavGroup<V>[];
+  navItems: NavItem<V>[];
+  activeView: V;
+  onViewChange: (view: V) => void;
   title: string;
   subtitle: string;
   userName: string;
   userEmail: string;
   userInitials: string;
+  roleLabel: string;
   onLogout: () => void;
   onHome: () => void;
+  onNotificationsClick: () => void;
   searchItems?: SearchResultItem[];
   children: ReactNode;
 }
 
-export function DashboardShell({
+export function DashboardShell<V extends string>({
+  navGroups,
   navItems,
   activeView,
   onViewChange,
@@ -69,11 +67,13 @@ export function DashboardShell({
   userName,
   userEmail,
   userInitials,
+  roleLabel,
   onLogout,
   onHome,
+  onNotificationsClick,
   searchItems = [],
   children,
-}: DashboardShellProps) {
+}: DashboardShellProps<V>) {
   const { theme, toggleTheme } = useTheme();
   const [collapsed, setCollapsed] = useState(false);
   const [query, setQuery] = useState('');
@@ -134,10 +134,10 @@ export function DashboardShell({
             </div>
 
             <nav className="mv-nav">
-              {NAV_GROUPS.map((group) => {
+              {navGroups.map((group) => {
                 const items = group.keys
                   .map((key) => navItems.find((item) => item.key === key))
-                  .filter((item): item is NavItem => Boolean(item));
+                  .filter((item): item is NavItem<V> => Boolean(item));
                 if (items.length === 0) return null;
                 return (
                   <div className="mv-nav-group" key={group.label}>
@@ -168,7 +168,7 @@ export function DashboardShell({
               {!collapsed && (
                 <div>
                   <div className="mv-profile-name">{userName}</div>
-                  <div className="mv-profile-role">Patient</div>
+                  <div className="mv-profile-role">{roleLabel}</div>
                 </div>
               )}
             </div>
@@ -237,7 +237,7 @@ export function DashboardShell({
               <button
                 type="button"
                 className="mv-icon-btn"
-                onClick={() => onViewChange('notifications')}
+                onClick={onNotificationsClick}
                 aria-label="Notifications"
               >
                 <BellIcon size={16} />

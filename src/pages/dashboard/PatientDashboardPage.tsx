@@ -194,6 +194,12 @@ export default function PatientDashboardPage() {
     { key: 'notifications' as const, label: 'Notifications', icon: <BellIcon size={16} /> },
   ];
 
+  const navGroups = [
+    { label: 'Workspace', keys: ['overview', 'documents'] as PatientView[] },
+    { label: 'Access & Activity', keys: ['requests', 'audit', 'notifications'] as PatientView[] },
+    { label: 'Tools', keys: ['chat', 'settings'] as PatientView[] },
+  ];
+
   const userName = user?.profile?.fullName || user?.email || 'Patient';
   const userInitials = userName
     .split(' ')
@@ -273,6 +279,7 @@ export default function PatientDashboardPage() {
 
   return (
     <DashboardShell
+      navGroups={navGroups}
       navItems={navItems}
       activeView={activeView}
       onViewChange={handleViewChange}
@@ -281,8 +288,10 @@ export default function PatientDashboardPage() {
       userName={userName}
       userEmail={user?.email || ''}
       userInitials={userInitials || 'P'}
+      roleLabel="Patient"
       onLogout={logout}
       onHome={() => { window.location.href = '/'; }}
+      onNotificationsClick={() => handleViewChange('notifications')}
       searchItems={searchItems}
     >
       {renderView()}
