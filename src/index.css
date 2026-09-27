@@ -343,7 +343,10 @@ ul {
    HERO SECTION
    ===================================================== */
 .hero {
-  background: linear-gradient(135deg, var(--light-cyan) 0%, var(--white) 60%);
+  /* Plum brand, scoped to .hero only — same reasoning as .navbar: going
+     section by section, shared --light-cyan/--bright-teal/etc. tokens
+     stay untouched until Features/Flow/CTA get their turn. */
+  background: linear-gradient(135deg, #fbf3f8 0%, var(--white) 60%);
   padding: 90px 0 80px;
   overflow: hidden;
 }
@@ -366,7 +369,7 @@ ul {
   font-weight: 600;
   text-transform: uppercase;
   letter-spacing: 2px;
-  color: var(--bright-teal);
+  color: #a8447f;
   margin-bottom: 20px;
 }
 
@@ -374,7 +377,7 @@ ul {
   font-family: var(--font-heading);
   font-size: 48px;
   font-weight: 700;
-  color: var(--deep-twilight);
+  color: #2b0f20;
   line-height: 1.1;
   letter-spacing: -0.03em;
   margin-bottom: 22px;
@@ -382,7 +385,7 @@ ul {
 
 .hero-description {
   font-size: 17px;
-  color: var(--muted-text);
+  color: #7a4560;
   line-height: 1.8;
   margin-bottom: 30px;
   max-width: 480px;
@@ -401,7 +404,7 @@ ul {
   gap: 12px;
   font-size: 15px;
   font-weight: 500;
-  color: var(--body-text);
+  color: #4a1f38;
 }
 
 .vp-icon {
@@ -411,7 +414,7 @@ ul {
   width: 34px;
   height: 34px;
   border-radius: 8px;
-  background: rgba(0, 119, 182, 0.08);
+  background: rgba(168, 68, 127, 0.08);
   flex-shrink: 0;
 }
 
@@ -426,17 +429,41 @@ ul {
   flex-wrap: wrap;
 }
 
+.hero-ctas .btn-primary {
+  background: #a8447f;
+  border-color: #a8447f;
+  color: var(--white);
+  box-shadow: 0 2px 12px rgba(168, 68, 127, 0.3);
+}
+
+.hero-ctas .btn-primary:hover {
+  background: #8f386a;
+  border-color: #8f386a;
+  box-shadow: 0 6px 20px rgba(168, 68, 127, 0.35);
+}
+
+.hero-ctas .btn-outline {
+  color: #a8447f;
+  border-color: #a8447f;
+}
+
+.hero-ctas .btn-outline:hover {
+  background: rgba(168, 68, 127, 0.08);
+  border-color: #8f386a;
+  color: #8f386a;
+}
+
 /* Carousel */
 .hero-carousel {
   position: relative;
   border-radius: var(--radius-lg);
   overflow: hidden;
-  box-shadow: var(--shadow-lg);
+  box-shadow: 0 12px 40px rgba(168, 68, 127, 0.18);
   opacity: 0;
   transform: translateX(24px);
   animation: fadeRight 0.7s ease 0.25s forwards;
   aspect-ratio: 4 / 3;
-  background: var(--light-cyan);
+  background: #fbf3f8;
 }
 
 .carousel-track {
