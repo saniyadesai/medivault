@@ -21,15 +21,22 @@ export function AuthProvider({ children }) {
   const [token, setToken] = useState('');
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
+  // Starts true so ProtectedRoute can wait for this mount effect to read
+  // localStorage before deciding isAuthenticated — otherwise the very first
+  // render (user/token still null) reads as logged-out and redirects to
+  // login on every hard page load/refresh, even with a valid stored session.
+  const [initializing, setInitializing] = useState(true);
 
   useEffect(() => {
     const session = readStoredSession();
     if (!session || !validateStoredAuthSession(session)) {
       localStorage.removeItem(STORAGE_KEY);
+      setInitializing(false);
       return;
     }
     setUser(session.user);
     setToken(session.token);
+    setInitializing(false);
   }, []);
 
   const persistSession = useCallback((sessionUser, sessionToken) => {
@@ -96,6 +103,7 @@ export function AuthProvider({ children }) {
       token,
       role: user?.role || '',
       isAuthenticated: Boolean(user && token),
+      initializing,
       loading,
       error,
       login,
@@ -103,7 +111,7 @@ export function AuthProvider({ children }) {
       logout,
       clearError,
     }),
-    [user, token, loading, error, login, register, logout, clearError]
+    [user, token, initializing, loading, error, login, register, logout, clearError]
   );
 
   return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>;
